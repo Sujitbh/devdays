@@ -1,0 +1,7 @@
+{
+  "name": "PelicanEye: Louisiana Coastal Guardian",
+  "description": "An AI-powered conservation platform for monitoring avian nesting colonies and habitat health across Louisiana's coast using aerial imagery analysis.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
