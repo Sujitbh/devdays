@@ -28,14 +28,28 @@ export const api = {
 
   /**
    * Upload an image file to POST /api/detect (multipart form-data).
+   * Optionally pass a confidence threshold (0.05–0.95).
    * Returns bounding boxes, annotated image URL, and wildlife summary.
    */
-  async detect(file: File): Promise<DetectionResponse> {
+  async detect(file: File, confThreshold?: number): Promise<DetectionResponse> {
     const form = new FormData();
     form.append('file', file);
+    if (confThreshold !== undefined) {
+      form.append('conf_threshold', confThreshold.toString());
+    }
+
+    console.log('[PelicanEye] 📤 Uploading:', file.name, `(${(file.size / 1024).toFixed(0)} KB)`, 'threshold:', confThreshold ?? 'default');
 
     const { data } = await http.post<DetectionResponse>('/api/detect', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    console.log('[PelicanEye] 📥 Response:', {
+      success: data.success,
+      total_detections: data.total_detections,
+      detections: data.detections,
+      summary: data.summary,
+      annotated_image: data.annotated_image,
     });
 
     // Prefix static image paths with backend URL so they resolve correctly

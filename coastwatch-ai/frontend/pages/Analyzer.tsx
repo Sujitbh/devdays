@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Loader2, Sparkles, CheckCircle, AlertCircle, Bird, Trash2, Download } from 'lucide-react';
+import { Upload, Loader2, Sparkles, CheckCircle, AlertCircle, Bird, Trash2, Download, SlidersHorizontal, SearchX } from 'lucide-react';
 import { api } from '../services/api';
 import { useStore } from '../store/useStore';
 import type { DetectionResponse } from '../types';
@@ -11,6 +11,7 @@ const Analyzer: React.FC = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<DetectionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confThreshold, setConfThreshold] = useState(0.15);
   const addDetection = useStore(state => state.addDetection);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,9 +31,11 @@ const Analyzer: React.FC = () => {
     if (!file) return;
     setAnalyzing(true);
     setError(null);
+    console.log(`[PelicanEye] Starting analysis: ${file.name} (${(file.size/1024).toFixed(0)} KB) threshold=${confThreshold}`);
     try {
-      const data = await api.detect(file);
+      const data = await api.detect(file, confThreshold);
       setResult(data);
+      console.log('[PelicanEye] Result set:', data.total_detections, 'detection(s)');
       // Also add to Zustand store for in-session map/archive use
       if (data.summary) {
         addDetection({
@@ -138,6 +141,30 @@ const Analyzer: React.FC = () => {
               <><Sparkles size={24} /> Run Intelligence Scan</>
             )}
           </button>
+
+          {/* Confidence Threshold Slider */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                <SlidersHorizontal size={16} className="text-teal-500" />
+                Confidence Threshold
+              </div>
+              <span className="text-sm font-black text-teal-600">{(confThreshold * 100).toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0.01}
+              max={0.80}
+              step={0.01}
+              value={confThreshold}
+              onChange={(e) => setConfThreshold(parseFloat(e.target.value))}
+              className="w-full accent-teal-600"
+            />
+            <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+              <span>More Detections (1%)</span>
+              <span>Higher Precision (80%)</span>
+            </div>
+          </div>
         </div>
 
         {/* Results Panel */}
@@ -149,6 +176,51 @@ const Analyzer: React.FC = () => {
                 <p className="text-teal-700 mt-2 max-w-xs mx-auto">Running YOLOv8 object detection on aerial frame...</p>
              </div>
           ) : result?.summary ? (
+            result.total_detections === 0 ? (
+              /* ---- Zero-Detection State ---- */
+              <div className="bg-white border border-amber-200 rounded-3xl overflow-hidden shadow-xl">
+                <div className="bg-amber-500 p-8 text-white">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-2xl font-bold">Scan Complete</h3>
+                      <p className="text-amber-100 text-sm">YOLOv8 + PelicanEye AI Engine</p>
+                    </div>
+                    <SearchX size={32} />
+                  </div>
+                  <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-md text-center">
+                    <span className="text-lg font-black">No Objects Detected</span>
+                  </div>
+                </div>
+                <div className="p-8 space-y-5">
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    The model did not identify any objects above the <strong>{(confThreshold * 100).toFixed(0)}%</strong> confidence threshold.
+                  </p>
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-2">
+                    <p className="text-xs font-bold text-amber-700 uppercase">Tips to improve results</p>
+                    <ul className="text-xs text-amber-600 space-y-1 list-disc list-inside">
+                      <li>Lower the confidence threshold slider</li>
+                      <li>Use higher-resolution aerial imagery</li>
+                      <li>Ensure subjects are visible at the current altitude</li>
+                      <li>Try a different survey frame from the flight</li>
+                    </ul>
+                  </div>
+                  <button
+                    onClick={() => { setConfThreshold(0.01); }}
+                    className="w-full bg-amber-500 text-white py-3 rounded-xl font-bold text-sm hover:bg-amber-600 transition-all"
+                  >
+                    Set Threshold to 1% and Re-scan
+                  </button>
+
+                  {/* Debug Info Panel */}
+                  {result.debug_info && (
+                    <details className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs">
+                      <summary className="font-bold text-slate-500 cursor-pointer">Inference Debug Info</summary>
+                      <pre className="mt-2 text-[10px] text-slate-500 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(result.debug_info, null, 2)}</pre>
+                    </details>
+                  )}
+                </div>
+              </div>
+            ) : (
             <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl">
               <div className="bg-teal-600 p-8 text-white">
                 <div className="flex justify-between items-start mb-4">
@@ -219,7 +291,18 @@ const Analyzer: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Debug Info Panel */}
+              {result.debug_info && (
+                <div className="px-8 pb-6">
+                  <details className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs">
+                    <summary className="font-bold text-slate-500 cursor-pointer">Inference Debug Info</summary>
+                    <pre className="mt-2 text-[10px] text-slate-500 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(result.debug_info, null, 2)}</pre>
+                  </details>
+                </div>
+              )}
             </div>
+            ) /* end positive-detections branch */
           ) : (
             <div className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl h-full flex flex-col items-center justify-center p-12 text-center opacity-60">
               <Bird size={48} className="text-slate-300 mb-4" />

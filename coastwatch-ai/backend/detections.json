@@ -1,0 +1,342 @@
+[
+  {
+    "id": "72bba1707296",
+    "species": "Person",
+    "count": 11,
+    "confidence": 0.398,
+    "habitatType": "Marsh",
+    "nestingDetected": false,
+    "notes": "Detected 11 object(s): person (4), bus (1), stop sign (1), skateboard (1), bicycle (1), fire hydrant (2), tie (1).",
+    "threats": [
+      "Human encroachment"
+    ],
+    "lat": 29.1027,
+    "lng": -90.7899,
+    "timestamp": "2026-02-13T04:56:58.679011+00:00",
+    "imageUrl": "/static/uploads/151796ce16604c2b8881a0f858d9e35a.jpg",
+    "annotatedImageUrl": "/static/results/annotated_151796ce16604c2b8881a0f858d9e35a.jpg",
+    "boundingBoxes": [
+      {
+        "x1": 222.02505493164062,
+        "y1": 399.966552734375,
+        "x2": 345.2448425292969,
+        "y2": 877.2028198242188,
+        "confidence": 0.8085724115371704,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 54.98581314086914,
+        "y1": 399.1510009765625,
+        "x2": 207.66696166992188,
+        "y2": 901.07470703125,
+        "confidence": 0.7984562516212463,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 668.6012573242188,
+        "y1": 372.92608642578125,
+        "x2": 809.650146484375,
+        "y2": 874.6483154296875,
+        "confidence": 0.7089642286300659,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 0.0,
+        "y1": 216.7678680419922,
+        "x2": 738.5320434570312,
+        "y2": 751.9760131835938,
+        "confidence": 0.6896811127662659,
+        "class_id": 5,
+        "class_name": "bus"
+      },
+      {
+        "x1": 0.0,
+        "y1": 251.98219299316406,
+        "x2": 33.73811721801758,
+        "y2": 326.7324523925781,
+        "confidence": 0.3656432032585144,
+        "class_id": 11,
+        "class_name": "stop sign"
+      },
+      {
+        "x1": 668.4868774414062,
+        "y1": 824.6014404296875,
+        "x2": 809.5252075195312,
+        "y2": 882.9393310546875,
+        "confidence": 0.2894800007343292,
+        "class_id": 36,
+        "class_name": "skateboard"
+      },
+      {
+        "x1": 0.0,
+        "y1": 548.8965454101562,
+        "x2": 74.97465515136719,
+        "y2": 891.4559326171875,
+        "confidence": 0.25039398670196533,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 647.8236694335938,
+        "y1": 0.12099552154541016,
+        "x2": 759.9118041992188,
+        "y2": 104.98271179199219,
+        "confidence": 0.1637704223394394,
+        "class_id": 1,
+        "class_name": "bicycle"
+      },
+      {
+        "x1": 656.3390502929688,
+        "y1": 625.1713256835938,
+        "x2": 689.747314453125,
+        "y2": 715.6713256835938,
+        "confidence": 0.1410868763923645,
+        "class_id": 10,
+        "class_name": "fire hydrant"
+      },
+      {
+        "x1": 136.30296325683594,
+        "y1": 473.3824768066406,
+        "x2": 147.94371032714844,
+        "y2": 507.7395324707031,
+        "confidence": 0.09000896662473679,
+        "class_id": 27,
+        "class_name": "tie"
+      },
+      {
+        "x1": 424.6060485839844,
+        "y1": 660.5493774414062,
+        "x2": 461.8218078613281,
+        "y2": 761.5731201171875,
+        "confidence": 0.07049062848091125,
+        "class_id": 10,
+        "class_name": "fire hydrant"
+      }
+    ]
+  },
+  {
+    "id": "23064a5d02fc",
+    "species": "No species detected",
+    "count": 0,
+    "confidence": 0.0,
+    "habitatType": "Barrier Island",
+    "nestingDetected": false,
+    "notes": "No objects were detected in this image.",
+    "threats": [],
+    "lat": 29.1449,
+    "lng": -90.5545,
+    "timestamp": "2026-02-13T04:51:16.507542+00:00",
+    "imageUrl": "/static/uploads/06b23f9779b3420ca22aa748b552cf85.jpg",
+    "annotatedImageUrl": "/static/results/annotated_06b23f9779b3420ca22aa748b552cf85.jpg",
+    "boundingBoxes": []
+  },
+  {
+    "id": "4cb534cb2810",
+    "species": "No species detected",
+    "count": 0,
+    "confidence": 0.0,
+    "habitatType": "Open Water",
+    "nestingDetected": false,
+    "notes": "No objects were detected in this image.",
+    "threats": [],
+    "lat": 29.484,
+    "lng": -91.8586,
+    "timestamp": "2026-02-13T04:51:12.155502+00:00",
+    "imageUrl": "/static/uploads/4ed17129aaf14ab0a0d6cb9eed734e0b.jpg",
+    "annotatedImageUrl": "/static/results/annotated_4ed17129aaf14ab0a0d6cb9eed734e0b.jpg",
+    "boundingBoxes": []
+  },
+  {
+    "id": "0287e1e00b69",
+    "species": "Person",
+    "count": 2,
+    "confidence": 0.084,
+    "habitatType": "Marsh",
+    "nestingDetected": false,
+    "notes": "Detected 2 object(s): person (2).",
+    "threats": [
+      "Human encroachment"
+    ],
+    "lat": 29.6166,
+    "lng": -90.1021,
+    "timestamp": "2026-02-13T04:48:34.913624+00:00",
+    "imageUrl": "/static/uploads/a7a231a14e934153b1b36cd4ce23a34a.jpg",
+    "annotatedImageUrl": "/static/results/annotated_a7a231a14e934153b1b36cd4ce23a34a.jpg",
+    "boundingBoxes": [
+      {
+        "x1": 3366.905517578125,
+        "y1": 3023.3740234375,
+        "x2": 3464.41650390625,
+        "y2": 3163.41650390625,
+        "confidence": 0.09736349433660507,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 1759.6121826171875,
+        "y1": 2927.398193359375,
+        "x2": 1835.7813720703125,
+        "y2": 3077.173828125,
+        "confidence": 0.07142544537782669,
+        "class_id": 0,
+        "class_name": "person"
+      }
+    ]
+  },
+  {
+    "id": "fce4d5ec5137",
+    "species": "No species detected",
+    "count": 0,
+    "confidence": 0.0,
+    "habitatType": "Marsh",
+    "nestingDetected": false,
+    "notes": "No objects were detected in this image.",
+    "threats": [],
+    "lat": 29.8935,
+    "lng": -92.8851,
+    "timestamp": "2026-02-13T04:48:24.950279+00:00",
+    "imageUrl": "/static/uploads/3698d11c1d434a89ba8a265a4cf98d2b.jpg",
+    "annotatedImageUrl": "/static/results/annotated_3698d11c1d434a89ba8a265a4cf98d2b.jpg",
+    "boundingBoxes": []
+  },
+  {
+    "id": "26cea59c4866",
+    "species": "No species detected",
+    "count": 0,
+    "confidence": 0.0,
+    "habitatType": "Barrier Island",
+    "nestingDetected": false,
+    "notes": "No objects were detected in this image.",
+    "threats": [],
+    "lat": 29.89,
+    "lng": -90.9648,
+    "timestamp": "2026-02-13T04:46:54.681810+00:00",
+    "imageUrl": "/static/uploads/8d497aa4395d499496e7de71ccfdfcf6.jpg",
+    "annotatedImageUrl": "/static/results/annotated_8d497aa4395d499496e7de71ccfdfcf6.jpg",
+    "boundingBoxes": []
+  },
+  {
+    "id": "3d0a23abf7c9",
+    "species": "No species detected",
+    "count": 0,
+    "confidence": 0.0,
+    "habitatType": "Open Water",
+    "nestingDetected": false,
+    "notes": "No objects were detected in this image.",
+    "threats": [],
+    "lat": 29.7475,
+    "lng": -89.2828,
+    "timestamp": "2026-02-13T04:46:44.520521+00:00",
+    "imageUrl": "/static/uploads/6c12f8db866642c4b9bf43ea7213bd6e.jpg",
+    "annotatedImageUrl": "/static/results/annotated_6c12f8db866642c4b9bf43ea7213bd6e.jpg",
+    "boundingBoxes": []
+  },
+  {
+    "id": "eca77dbee468",
+    "species": "Person",
+    "count": 6,
+    "confidence": 0.656,
+    "habitatType": "Barrier Island",
+    "nestingDetected": false,
+    "notes": "Detected 6 object(s): bus (1), person (4), stop sign (1).",
+    "threats": [
+      "Human encroachment"
+    ],
+    "lat": 29.7481,
+    "lng": -89.8009,
+    "timestamp": "2026-02-13T04:45:56.022516+00:00",
+    "imageUrl": "/static/uploads/e81477e7153f43a7899d8eacb06194a8.jpg",
+    "annotatedImageUrl": "/static/results/annotated_e81477e7153f43a7899d8eacb06194a8.jpg",
+    "boundingBoxes": [
+      {
+        "x1": 22.87126922607422,
+        "y1": 231.27731323242188,
+        "x2": 805.0025634765625,
+        "y2": 756.8404541015625,
+        "confidence": 0.8734488487243652,
+        "class_id": 5,
+        "class_name": "bus"
+      },
+      {
+        "x1": 48.55036544799805,
+        "y1": 398.55230712890625,
+        "x2": 245.34556579589844,
+        "y2": 902.7026977539062,
+        "confidence": 0.865691065788269,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 669.472900390625,
+        "y1": 392.1859436035156,
+        "x2": 809.7201538085938,
+        "y2": 877.0354614257812,
+        "confidence": 0.8528353571891785,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 221.5172576904297,
+        "y1": 405.79864501953125,
+        "x2": 344.97064208984375,
+        "y2": 857.53662109375,
+        "confidence": 0.8252243995666504,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 0.0,
+        "y1": 550.5250244140625,
+        "x2": 63.00693130493164,
+        "y2": 873.4429321289062,
+        "confidence": 0.26111161708831787,
+        "class_id": 0,
+        "class_name": "person"
+      },
+      {
+        "x1": 0.058167457580566406,
+        "y1": 254.45938110351562,
+        "x2": 32.55740737915039,
+        "y2": 324.8741760253906,
+        "confidence": 0.25506845116615295,
+        "class_id": 11,
+        "class_name": "stop sign"
+      }
+    ]
+  },
+  {
+    "id": "a18885dcb5f5",
+    "species": "No species detected",
+    "count": 0,
+    "confidence": 0.0,
+    "habitatType": "Barrier Island",
+    "nestingDetected": false,
+    "notes": "No objects were detected in this image.",
+    "threats": [],
+    "lat": 29.6821,
+    "lng": -89.7312,
+    "timestamp": "2026-02-13T04:45:42.202910+00:00",
+    "imageUrl": "/static/uploads/f4662dd17a30432ab3bae9851eda1248.jpg",
+    "annotatedImageUrl": "/static/results/annotated_f4662dd17a30432ab3bae9851eda1248.jpg",
+    "boundingBoxes": []
+  },
+  {
+    "id": "7ccb6d81a3d0",
+    "species": "No species detected",
+    "count": 0,
+    "confidence": 0.0,
+    "habitatType": "Marsh",
+    "nestingDetected": false,
+    "notes": "No objects were detected in this image.",
+    "threats": [],
+    "lat": 29.2798,
+    "lng": -90.024,
+    "timestamp": "2026-02-13T04:38:03.259370+00:00",
+    "imageUrl": "/static/uploads/2265b8133d5a4c279d575f2af0c92be2.jpg",
+    "annotatedImageUrl": "/static/results/annotated_2265b8133d5a4c279d575f2af0c92be2.jpg",
+    "boundingBoxes": []
+  }
+]

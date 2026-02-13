@@ -30,6 +30,20 @@ class WildlifeSummary(BaseModel):
     threats: list[str] = []
 
 
+class DebugInfo(BaseModel):
+    """Diagnostic metadata returned alongside every detection response."""
+    raw_box_count: int = 0
+    final_box_count: int = 0
+    imgsz_used: int = 0
+    conf_used: float = 0.0
+    iou_used: float = 0.0
+    model_name: str = ""
+    image_width: int = 0
+    image_height: int = 0
+    image_mode: str = ""
+    class_names: list[str] = []
+
+
 class DetectionResponse(BaseModel):
     """Response returned after running detection on an uploaded image."""
     success: bool
@@ -39,6 +53,7 @@ class DetectionResponse(BaseModel):
     detections: list[BoundingBox]
     total_detections: int
     summary: Optional[WildlifeSummary] = None
+    debug_info: Optional[DebugInfo] = None
 
 
 class DetectionRecord(BaseModel):

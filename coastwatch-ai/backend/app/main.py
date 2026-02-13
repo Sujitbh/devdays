@@ -5,6 +5,7 @@ Configures the app, registers middleware, mounts static files,
 and includes API routers.
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -17,6 +18,13 @@ from app.routes.detect import router as detect_router
 from app.routes.auth import router as auth_router
 from app.routes.data import router as data_router
 from app.services.detector import detector_service
+
+# ---- Logging Setup -----------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(name)-28s  %(levelname)-5s  %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 # ---- Lifespan: load model on startup ----------------------------------------

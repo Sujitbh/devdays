@@ -32,7 +32,7 @@ SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
 
 # ---- YOLO Model ----
 YOLO_MODEL: str = os.getenv("YOLO_MODEL", "yolov8n.pt")
-CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.35"))
+CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.15"))
 
 # Ensure directories exist at startup
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

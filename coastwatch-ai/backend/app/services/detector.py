@@ -5,6 +5,7 @@ Manages loading the YOLOv8 model and running inference on images.
 Draws annotated bounding boxes on a copy of the original image.
 """
 
+import logging
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -13,18 +14,27 @@ from ultralytics import YOLO
 from app.config import CONFIDENCE_THRESHOLD, RESULTS_DIR, YOLO_MODEL
 from app.models.detection import BoundingBox
 
+logger = logging.getLogger("pelicaneye.detector")
+
+# ---- Aerial-optimised inference defaults ------------------------------------
+DEFAULT_IMGSZ = 1280   # Larger input → small-object recall
+DEFAULT_IOU   = 0.45   # NMS IoU for clustered colonies
+
 
 class DetectorService:
     """Singleton-style service that wraps YOLOv8 inference."""
 
     def __init__(self) -> None:
         self.model: YOLO | None = None
+        self._model_path: str = YOLO_MODEL
 
     def load_model(self) -> None:
         """Load (or download) the YOLO model. Called once at startup."""
-        print(f"[PelicanEye] Loading YOLO model: {YOLO_MODEL}")
-        self.model = YOLO(YOLO_MODEL)
-        print("[PelicanEye] Model loaded successfully.")
+        print(f"[PelicanEye] Loading YOLO model: {self._model_path}")
+        self.model = YOLO(self._model_path)
+        # Log all class names so we can verify 'bird' is present
+        print(f"[PelicanEye] Model loaded — {len(self.model.names)} classes")
+        print(f"[PelicanEye] Class map: {self.model.names}")
 
     @property
     def is_loaded(self) -> bool:
@@ -32,47 +42,102 @@ class DetectorService:
 
     # ---- Core Detection --------------------------------------------------------
 
-    def detect(self, image_path: Path) -> tuple[list[BoundingBox], Path]:
+    def detect(
+        self,
+        image_path: Path,
+        conf_threshold: float | None = None,
+    ) -> tuple[list[BoundingBox], Path, dict]:
         """
         Run YOLOv8 detection on the given image.
+
+        Args:
+            image_path     – path to the input image
+            conf_threshold – confidence threshold (0.01-0.95); falls back to config
 
         Returns:
             detections  – list of BoundingBox objects
             result_path – path to the annotated output image
+            debug_info  – dict with diagnostic metadata for the response
         """
         if not self.is_loaded:
             raise RuntimeError("YOLO model is not loaded. Call load_model() first.")
 
-        # Run inference
+        threshold = conf_threshold if conf_threshold is not None else CONFIDENCE_THRESHOLD
+
+        # ---- Pre-inference diagnostics ----------------------------------------
+        pil_img = Image.open(image_path)
+        orig_w, orig_h = pil_img.size
+        img_mode = pil_img.mode
+        pil_img.close()
+
+        logger.info("="*60)
+        logger.info("🔍 YOLO INFERENCE START")
+        logger.info("  Image     : %s", image_path.name)
+        logger.info("  Size      : %d x %d  mode=%s", orig_w, orig_h, img_mode)
+        logger.info("  Model     : %s", self._model_path)
+        logger.info("  imgsz     : %d", DEFAULT_IMGSZ)
+        logger.info("  conf      : %.3f", threshold)
+        logger.info("  iou       : %.2f", DEFAULT_IOU)
+        logger.info("  classes   : (all — no filter)")
+
+        # ---- Run inference ----------------------------------------------------
         results = self.model.predict(
             source=str(image_path),
-            conf=CONFIDENCE_THRESHOLD,
-            verbose=False,
+            conf=threshold,
+            iou=DEFAULT_IOU,
+            imgsz=DEFAULT_IMGSZ,
+            verbose=True,
         )
 
         result = results[0]
         boxes = result.boxes
+        raw_count = len(boxes)
 
-        # Parse detections
+        logger.info("📊 YOLO raw output: %d box(es)  (conf ≥ %.3f, iou=%.2f, imgsz=%d)",
+                     raw_count, threshold, DEFAULT_IOU, DEFAULT_IMGSZ)
+
+        # ---- Parse detections -------------------------------------------------
         detections: list[BoundingBox] = []
         for box in boxes:
             coords = box.xyxy[0].tolist()
+            cls_id = int(box.cls[0])
+            cls_name = self.model.names[cls_id]
+            conf = float(box.conf[0])
+            logger.info("  → cls=%d (%s)  conf=%.4f  box=[%.0f,%.0f,%.0f,%.0f]",
+                         cls_id, cls_name, conf, *coords)
             detections.append(
                 BoundingBox(
                     x1=coords[0],
                     y1=coords[1],
                     x2=coords[2],
                     y2=coords[3],
-                    confidence=float(box.conf[0]),
-                    class_id=int(box.cls[0]),
-                    class_name=self.model.names[int(box.cls[0])],
+                    confidence=conf,
+                    class_id=cls_id,
+                    class_name=cls_name,
                 )
             )
+
+        logger.info("✅ Final detections: %d  (no class filter applied)", len(detections))
+        logger.info("="*60)
+
+        # ---- Build debug info -------------------------------------------------
+        debug_info = {
+            "raw_box_count": raw_count,
+            "final_box_count": len(detections),
+            "imgsz_used": DEFAULT_IMGSZ,
+            "conf_used": round(threshold, 4),
+            "iou_used": DEFAULT_IOU,
+            "model_name": self._model_path,
+            "image_width": orig_w,
+            "image_height": orig_h,
+            "image_mode": img_mode,
+            "class_names": list(self.model.names.values()),
+        }
 
         # Draw annotated image
         annotated_path = self._draw_annotations(image_path, detections)
 
-        return detections, annotated_path
+        return detections, annotated_path, debug_info
 
     # ---- Annotation Drawing ----------------------------------------------------
 
