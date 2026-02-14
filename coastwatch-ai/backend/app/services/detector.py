@@ -20,6 +20,13 @@ logger = logging.getLogger("pelicaneye.detector")
 DEFAULT_IMGSZ = 1280   # Larger input → small-object recall
 DEFAULT_IOU   = 0.45   # NMS IoU for clustered colonies
 
+# ---- Wildlife class filter ---------------------------------------------------
+# Only these COCO class names (lowercased) are considered relevant wildlife.
+# Everything else is excluded from results.
+ALLOWED_CLASSES = {"bird"}
+# Keywords that also pass the filter (for custom models with nest classes, etc.)
+ALLOWED_KEYWORDS = {"bird", "nest", "pelican", "heron", "egret", "ibis", "tern"}
+
 
 class DetectorService:
     """Singleton-style service that wraps YOLOv8 inference."""
@@ -96,14 +103,29 @@ class DetectorService:
         logger.info("📊 YOLO raw output: %d box(es)  (conf ≥ %.3f, iou=%.2f, imgsz=%d)",
                      raw_count, threshold, DEFAULT_IOU, DEFAULT_IMGSZ)
 
-        # ---- Parse detections -------------------------------------------------
+        # ---- Parse & filter detections ----------------------------------------
         detections: list[BoundingBox] = []
+        skipped = 0
         for box in boxes:
             coords = box.xyxy[0].tolist()
             cls_id = int(box.cls[0])
             cls_name = self.model.names[cls_id]
             conf = float(box.conf[0])
-            logger.info("  → cls=%d (%s)  conf=%.4f  box=[%.0f,%.0f,%.0f,%.0f]",
+
+            # Wildlife filter: keep only birds / nests / relevant species
+            name_lower = cls_name.lower()
+            is_relevant = (
+                name_lower in ALLOWED_CLASSES
+                or any(kw in name_lower for kw in ALLOWED_KEYWORDS)
+            )
+
+            if not is_relevant:
+                logger.info("  ✗ SKIP cls=%d (%s)  conf=%.4f  — not wildlife",
+                             cls_id, cls_name, conf)
+                skipped += 1
+                continue
+
+            logger.info("  ✓ KEEP cls=%d (%s)  conf=%.4f  box=[%.0f,%.0f,%.0f,%.0f]",
                          cls_id, cls_name, conf, *coords)
             detections.append(
                 BoundingBox(
@@ -117,7 +139,7 @@ class DetectorService:
                 )
             )
 
-        logger.info("✅ Final detections: %d  (no class filter applied)", len(detections))
+        logger.info("✅ Final detections: %d  (skipped %d non-wildlife)", len(detections), skipped)
         logger.info("="*60)
 
         # ---- Build debug info -------------------------------------------------
