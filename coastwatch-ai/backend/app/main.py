@@ -18,6 +18,7 @@ from app.routes.detect import router as detect_router
 from app.routes.auth import router as auth_router
 from app.routes.data import router as data_router
 from app.services.detector import detector_service
+from app.services.local_auth import init_db
 
 # ---- Logging Setup -----------------------------------------------------------
 logging.basicConfig(
@@ -31,7 +32,8 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load the YOLO model when the server starts."""
+    """Load the YOLO model and initialize auth DB when the server starts."""
+    init_db()
     detector_service.load_model()
     yield
 

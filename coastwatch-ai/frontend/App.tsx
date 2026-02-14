@@ -12,15 +12,19 @@ import { useStore } from './store/useStore';
 
 const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
   const user = useStore(state => state.user);
-  if (!user) return <Navigate to="/login" replace />;
+  const token = useStore(state => state.token);
+  if (!user || !token) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 
 const App: React.FC = () => {
+  const user = useStore(state => state.user);
+  const token = useStore(state => state.token);
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={user && token ? <Navigate to="/dashboard" replace /> : <Login />} />
         
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />

@@ -12,6 +12,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isRegister, setIsRegister] = useState(false);
   const [fullName, setFullName] = useState('');
   const setUser = useStore(state => state.setUser);
@@ -21,18 +22,28 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
+
+    // Client-side validation
+    if (isRegister && !fullName.trim()) {
+      setError('Full name is required.');
+      setLoading(false);
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      setLoading(false);
+      return;
+    }
 
     try {
-      // Attempt real Supabase auth via backend
       if (isRegister) {
-        const res = await api.register(email, password, fullName || email.split('@')[0]);
-        const user: User = {
-          id: res.user.id,
-          name: res.user.full_name || email.split('@')[0],
-          email: res.user.email,
-          role,
-        };
-        setUser(user, res.access_token);
+        await api.register(email, password, fullName.trim());
+        // Registration successful — switch to sign-in form
+        setSuccess('Account created! Please sign in with your credentials.');
+        setIsRegister(false);
+        setFullName('');
+        setPassword('');
       } else {
         const res = await api.login(email, password);
         const user: User = {
@@ -42,19 +53,11 @@ const Login: React.FC = () => {
           role,
         };
         setUser(user, res.access_token);
+        navigate('/dashboard');
       }
-      navigate('/dashboard');
     } catch (err: any) {
-      // Supabase not configured — fall back to demo mode for any auth error
-      console.warn('[PelicanEye] Auth backend unavailable — using demo login');
-      const demoUser: User = {
-        id: 'demo-1',
-        name: fullName || email.split('@')[0] || 'Demo User',
-        email: email || 'demo@pelicaneye.gov',
-        role,
-      };
-      setUser(demoUser, 'demo-token');
-      navigate('/dashboard');
+      const detail = err?.response?.data?.detail;
+      setError(detail || (isRegister ? 'Registration failed. Please try again.' : 'Invalid email or password.'));
     } finally {
       setLoading(false);
     }
@@ -70,6 +73,11 @@ const Login: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {success && (
+            <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
+              ✓ {success}
+            </div>
+          )}
           {error && (
             <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm">
               <AlertCircle size={16} /> {error}
@@ -81,6 +89,7 @@ const Login: React.FC = () => {
               <input
                 type="text"
                 placeholder="Full Name"
+                required
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}

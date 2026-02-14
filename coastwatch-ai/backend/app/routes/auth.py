@@ -2,14 +2,17 @@
 PelicanEye - Auth Routes
 
 Endpoints for user registration, login, logout, and session check.
-Uses Supabase Auth (GoTrue) — handles password hashing, JWTs, etc.
+Uses a local SQLite database with bcrypt hashing and JWT tokens.
 """
 
+import logging
 from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
 
 from app.models.auth import RegisterRequest, LoginRequest, AuthResponse
-from app.services.supabase_client import get_supabase
+from app.services.local_auth import register_user, login_user, get_user_from_token
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -17,89 +20,58 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 @router.post("/register", response_model=AuthResponse)
 async def register(body: RegisterRequest):
     """
-    Register a new user with Supabase Auth.
+    Register a new user.
 
-    Supabase handles password hashing and stores users in its auth.users table.
+    Stores the user in the local SQLite database with a bcrypt-hashed password.
+    Returns JWT access token on success.
     """
     try:
-        supabase = get_supabase()
-        result = supabase.auth.sign_up({
-            "email": body.email,
-            "password": body.password,
-            "options": {
-                "data": {
-                    "full_name": body.full_name,
-                }
-            }
-        })
-
-        if result.user is None:
-            raise HTTPException(status_code=400, detail="Registration failed. User may already exist.")
-
+        result = register_user(
+            email=body.email,
+            password=body.password,
+            full_name=body.full_name,
+        )
+        log.info("User registered: %s", body.email)
         return AuthResponse(
             success=True,
             message="Registration successful.",
-            access_token=result.session.access_token if result.session else "",
-            refresh_token=result.session.refresh_token if result.session else "",
-            user={
-                "id": str(result.user.id),
-                "email": result.user.email,
-                "full_name": body.full_name,
-            },
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"],
+            user=result["user"],
         )
-
-    except HTTPException:
-        raise
-    except Exception as exc:
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.post("/login", response_model=AuthResponse)
 async def login(body: LoginRequest):
     """
-    Log in with email and password via Supabase Auth.
+    Authenticate with email + password.
 
-    Returns access and refresh tokens.
+    Validates credentials against the local database and returns a JWT.
     """
     try:
-        supabase = get_supabase()
-        result = supabase.auth.sign_in_with_password({
-            "email": body.email,
-            "password": body.password,
-        })
-
-        if result.user is None or result.session is None:
-            raise HTTPException(status_code=401, detail="Invalid email or password.")
-
-        user_meta = result.user.user_metadata or {}
-
+        result = login_user(email=body.email, password=body.password)
+        log.info("User logged in: %s", body.email)
         return AuthResponse(
             success=True,
             message="Login successful.",
-            access_token=result.session.access_token,
-            refresh_token=result.session.refresh_token,
-            user={
-                "id": str(result.user.id),
-                "email": result.user.email,
-                "full_name": user_meta.get("full_name", ""),
-            },
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"],
+            user=result["user"],
         )
-
-    except HTTPException:
-        raise
-    except Exception as exc:
+    except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.post("/logout")
 async def logout(authorization: Optional[str] = Header(None)):
-    """Sign out the current user session."""
-    try:
-        supabase = get_supabase()
-        supabase.auth.sign_out()
-        return {"success": True, "message": "Logged out."}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    """Sign out the current user session (client should discard tokens)."""
+    return {"success": True, "message": "Logged out."}
 
 
 @router.get("/me")
@@ -111,24 +83,9 @@ async def get_current_user(authorization: str = Header(...)):
     """
     try:
         token = authorization.replace("Bearer ", "")
-        supabase = get_supabase()
-        result = supabase.auth.get_user(token)
-
-        if result.user is None:
-            raise HTTPException(status_code=401, detail="Invalid or expired token.")
-
-        user_meta = result.user.user_metadata or {}
-
-        return {
-            "success": True,
-            "user": {
-                "id": str(result.user.id),
-                "email": result.user.email,
-                "full_name": user_meta.get("full_name", ""),
-            },
-        }
-
-    except HTTPException:
-        raise
+        user = get_user_from_token(token)
+        return {"success": True, "user": user}
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
