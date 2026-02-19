@@ -1,5 +1,65 @@
 [
   {
+    "id": "1c0fc1807c5b",
+    "species": "Great Blue Heron",
+    "count": 3,
+    "confidence": 0.041,
+    "habitatType": "Swamp",
+    "nestingDetected": false,
+    "notes": "Detected 3 object(s) across 1 class(es): bird (3). 3 avian subject(s) identified \u2014 likely Great Blue Heron based on colony size and Louisiana coastal habitat patterns. Low average confidence \u2014 subjects may be partially obscured or at high altitude.",
+    "threats": [],
+    "lat": 29.7991,
+    "lng": -91.8384,
+    "timestamp": "2026-02-19T02:31:40.962620+00:00",
+    "imageUrl": "/static/uploads/7c84981e2970417783fa07783776bba4.jpg",
+    "annotatedImageUrl": "/static/results/annotated_7c84981e2970417783fa07783776bba4.jpg",
+    "boundingBoxes": [
+      {
+        "x1": 3431.375,
+        "y1": 1029.2645263671875,
+        "x2": 3474.362548828125,
+        "y2": 1110.2325439453125,
+        "confidence": 0.07542549073696136,
+        "class_id": 14,
+        "class_name": "bird"
+      },
+      {
+        "x1": 3427.9443359375,
+        "y1": 1025.8896484375,
+        "x2": 3526.2109375,
+        "y2": 1131.460693359375,
+        "confidence": 0.023993341252207756,
+        "class_id": 14,
+        "class_name": "bird"
+      },
+      {
+        "x1": 3088.64892578125,
+        "y1": 803.7285766601562,
+        "x2": 3132.971435546875,
+        "y2": 853.7528686523438,
+        "confidence": 0.023964226245880127,
+        "class_id": 14,
+        "class_name": "bird"
+      }
+    ]
+  },
+  {
+    "id": "f9e827021844",
+    "species": "No species detected",
+    "count": 0,
+    "confidence": 0.0,
+    "habitatType": "Barrier Island",
+    "nestingDetected": false,
+    "notes": "No wildlife objects were detected in this survey frame. Try lowering the confidence threshold or using higher-resolution imagery.",
+    "threats": [],
+    "lat": 29.1485,
+    "lng": -90.3738,
+    "timestamp": "2026-02-19T02:31:37.302348+00:00",
+    "imageUrl": "/static/uploads/2734ad4bf5554b5ab2c9b2960c10a2e1.jpg",
+    "annotatedImageUrl": "/static/results/annotated_2734ad4bf5554b5ab2c9b2960c10a2e1.jpg",
+    "boundingBoxes": []
+  },
+  {
     "id": "4245042db30f",
     "species": "Brown Pelican",
     "count": 28,

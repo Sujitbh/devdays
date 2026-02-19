@@ -59,6 +59,9 @@ export const api = {
     if (data.annotated_image && !data.annotated_image.startsWith('http')) {
       data.annotated_image = `${BACKEND_URL}${data.annotated_image}`;
     }
+    if (data.heatmap_image && !data.heatmap_image.startsWith('http')) {
+      data.heatmap_image = `${BACKEND_URL}${data.heatmap_image}`;
+    }
 
     return data;
   },
@@ -88,10 +91,29 @@ export const api = {
 
   // ── Exports ───────────────────────────────────────────────────────────
 
-  /** Download detections as CSV */
-  async exportCSV(): Promise<void> {
-    const response = await http.get('/api/exports/csv', { responseType: 'blob' });
-    downloadBlob(response.data, 'pelicaneye_detections.csv', 'text/csv');
+  /** Download detections as CSV with optional filters */
+  async exportCSV(options?: {
+    species?: string;
+    habitat?: string;
+    minConfidence?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    includeBoxes?: boolean;
+  }): Promise<void> {
+    const params = new URLSearchParams();
+    if (options?.species) params.set('species', options.species);
+    if (options?.habitat) params.set('habitat', options.habitat);
+    if (options?.minConfidence !== undefined) params.set('min_confidence', options.minConfidence.toString());
+    if (options?.dateFrom) params.set('date_from', options.dateFrom);
+    if (options?.dateTo) params.set('date_to', options.dateTo);
+    if (options?.includeBoxes) params.set('include_boxes', 'true');
+
+    const qs = params.toString();
+    const url = `/api/exports/csv${qs ? `?${qs}` : ''}`;
+    const response = await http.get(url, { responseType: 'blob' });
+
+    const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+    downloadBlob(response.data, `pelicaneye_report_${ts}.csv`, 'text/csv');
   },
 
   /** Download detections as GeoJSON */
