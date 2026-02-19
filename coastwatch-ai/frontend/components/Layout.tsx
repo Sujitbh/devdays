@@ -63,10 +63,15 @@ const Layout: React.FC = () => {
         </nav>
 
         <div className="p-4 border-t border-slate-800 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 transition-all text-slate-400 hover:text-white group">
+          <Link
+            to="/settings"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:text-white group hover:bg-slate-800 ${
+              location.pathname === '/settings' ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : ''
+            }`}
+          >
             <Settings size={20} className="group-hover:rotate-45 transition-transform" />
             <span className="font-medium text-sm">Settings</span>
-          </button>
+          </Link>
           <button 
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 transition-all text-slate-400 hover:text-red-400"

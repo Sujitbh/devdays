@@ -8,6 +8,7 @@ import Analyzer from './pages/Analyzer';
 import Archive from './pages/Archive';
 import HabitatMap from './pages/HabitatMap';
 import Alerts from './pages/Alerts';
+import Settings from './pages/Settings';
 import { useStore } from './store/useStore';
 
 const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
@@ -33,6 +34,7 @@ const App: React.FC = () => {
           <Route path="archive" element={<Archive />} />
           <Route path="map" element={<HabitatMap />} />
           <Route path="alerts" element={<Alerts />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

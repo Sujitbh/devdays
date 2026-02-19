@@ -5,6 +5,7 @@ import type {
   DetectionRecord,
   DashboardStats,
   AuthResponse,
+  Alert,
 } from '../types';
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -120,6 +121,62 @@ export const api = {
   async exportGeoJSON(): Promise<void> {
     const response = await http.get('/api/exports/geojson', { responseType: 'blob' });
     downloadBlob(response.data, 'pelicaneye_detections.geojson', 'application/geo+json');
+  },
+
+  // ── Alerts ────────────────────────────────────────────────────────────
+
+  /** Fetch all alerts with optional filters */
+  async getAlerts(filters?: {
+    severity?: string;
+    category?: string;
+    species?: string;
+    resolved?: boolean;
+  }): Promise<Alert[]> {
+    const params = new URLSearchParams();
+    if (filters?.severity) params.set('severity', filters.severity);
+    if (filters?.category) params.set('category', filters.category);
+    if (filters?.species) params.set('species', filters.species);
+    if (filters?.resolved !== undefined) params.set('resolved', filters.resolved.toString());
+
+    const qs = params.toString();
+    const url = `/api/alerts${qs ? `?${qs}` : ''}`;
+    const { data } = await http.get<Alert[]>(url);
+    return data;
+  },
+
+  /** Get a single alert by ID */
+  async getAlert(alertId: string): Promise<Alert> {
+    const { data } = await http.get<Alert>(`/api/alerts/${alertId}`);
+    return data;
+  },
+
+  /** Create a new alert */
+  async createAlert(alert: Omit<Alert, 'id' | 'timestamp' | 'resolved'>): Promise<Alert> {
+    const { data } = await http.post<Alert>('/api/alerts', alert);
+    return data;
+  },
+
+  /** Update an alert (resolved status, notes) */
+  async updateAlert(alertId: string, updates: { resolved?: boolean; notes?: string }): Promise<Alert> {
+    const { data } = await http.put<Alert>(`/api/alerts/${alertId}`, updates);
+    return data;
+  },
+
+  /** Delete/archive an alert */
+  async deleteAlert(alertId: string): Promise<void> {
+    await http.delete(`/api/alerts/${alertId}`);
+  },
+
+  /** Get alert summary statistics */
+  async getAlertStats(): Promise<{
+    total: number;
+    resolved: number;
+    by_severity: Record<string, number>;
+    by_category: Record<string, number>;
+    newest_timestamp?: string;
+  }> {
+    const { data } = await http.get('/api/alerts/stats/summary');
+    return data;
   },
 
   // ── Auth ──────────────────────────────────────────────────────────────
