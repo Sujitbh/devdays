@@ -334,10 +334,12 @@ class DetectionStore:
         annotated_image_url: str,
         summary: WildlifeSummary,
         clusters: list[SpatialCluster] | None = None,
+        user_id: str = "",
     ) -> DetectionRecord:
         """Create and store a new detection record."""
         record = DetectionRecord(
             id=uuid.uuid4().hex[:12],
+            user_id=user_id,
             species=summary.species,
             count=summary.count,
             confidence=summary.confidence,
@@ -359,19 +361,22 @@ class DetectionStore:
         self._save()
         return record
 
-    def get_all(self) -> list[DetectionRecord]:
+    def get_all(self, user_id: str = "") -> list[DetectionRecord]:
+        if user_id:
+            return [r for r in self._records if r.user_id == user_id]
         return list(self._records)
 
-    def get_stats(self) -> DashboardStats:
+    def get_stats(self, user_id: str = "") -> DashboardStats:
+        records = self.get_all(user_id)
         all_species = set()
         total_nests = 0
-        for r in self._records:
+        for r in records:
             all_species.add(r.species)
             if r.nestingDetected:
                 total_nests += r.count
         return DashboardStats(
-            totalImages=len(self._records),
-            totalDetections=sum(r.count for r in self._records),
+            totalImages=len(records),
+            totalDetections=sum(r.count for r in records),
             nestsDetected=total_nests,
             speciesCount=len(all_species),
             speciesList=sorted(all_species),

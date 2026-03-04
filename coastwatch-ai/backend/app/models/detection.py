@@ -87,6 +87,7 @@ class DetectionResponse(BaseModel):
 class DetectionRecord(BaseModel):
     """A persisted detection result with metadata."""
     id: str
+    user_id: str = ""
     species: str
     count: int
     confidence: float

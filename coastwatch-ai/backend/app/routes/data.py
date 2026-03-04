@@ -10,25 +10,26 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
 from app.models.detection import DetectionRecord, DashboardStats
 from app.services.detection_store import detection_store
+from app.utils.dependencies import get_current_user_id
 
 router = APIRouter(prefix="/api", tags=["Data"])
 
 
 @router.get("/detections", response_model=list[DetectionRecord])
-async def list_detections():
-    """Return all detection records, newest first."""
-    return detection_store.get_all()
+async def list_detections(user_id: str = Depends(get_current_user_id)):
+    """Return all detection records for the current user, newest first."""
+    return detection_store.get_all(user_id)
 
 
 @router.get("/stats", response_model=DashboardStats)
-async def get_stats():
-    """Return aggregated dashboard statistics."""
-    return detection_store.get_stats()
+async def get_stats(user_id: str = Depends(get_current_user_id)):
+    """Return aggregated dashboard statistics for the current user."""
+    return detection_store.get_stats(user_id)
 
 
 @router.get("/exports/csv")
@@ -39,9 +40,10 @@ async def export_csv(
     date_from: Optional[str] = Query(None, description="Start date (ISO format, e.g. 2025-01-01)"),
     date_to: Optional[str] = Query(None, description="End date (ISO format, e.g. 2025-12-31)"),
     include_boxes: bool = Query(False, description="Include individual bounding box rows"),
+    user_id: str = Depends(get_current_user_id),
 ):
     """Export detection records as a comprehensive CSV report with optional filters."""
-    records = detection_store.get_all()
+    records = detection_store.get_all(user_id)
 
     # ── Apply filters ────────────────────────────────────────────────
     if species:
@@ -183,9 +185,9 @@ async def export_csv(
 
 
 @router.get("/exports/geojson")
-async def export_geojson():
-    """Export all detection records as GeoJSON FeatureCollection."""
-    records = detection_store.get_all()
+async def export_geojson(user_id: str = Depends(get_current_user_id)):
+    """Export detection records as GeoJSON FeatureCollection for the current user."""
+    records = detection_store.get_all(user_id)
 
     features = []
     for r in records:

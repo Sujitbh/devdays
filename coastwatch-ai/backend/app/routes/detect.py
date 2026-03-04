@@ -5,13 +5,14 @@ API endpoints for uploading images and running YOLOv8 detection.
 """
 
 import logging
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.config import CONFIDENCE_THRESHOLD
 from app.models.detection import DebugInfo, DetectionResponse, SpatialCluster
 from app.services.detector import detector_service
 from app.services.detection_store import detection_store
 from app.utils.image import save_upload, validate_image
+from app.utils.dependencies import get_current_user_id
 
 logger = logging.getLogger("pelicaneye.detect")
 
@@ -24,6 +25,7 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp", "image/ti
 async def detect_wildlife(
     file: UploadFile = File(...),
     conf_threshold: float = Form(None),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     Upload an aerial image and run the advanced YOLOv8 wildlife pipeline.
@@ -77,6 +79,7 @@ async def detect_wildlife(
 
     detection_store.add_record(
         detections, original_url, annotated_url, summary, clusters,
+        user_id=user_id,
     )
 
     # ── Build response ───────────────────────────────────────────────────
