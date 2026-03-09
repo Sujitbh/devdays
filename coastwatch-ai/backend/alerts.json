@@ -1,3 +1,17 @@
 {
-  "alerts": []
+  "alerts": [
+    {
+      "id": "7ecdcedf-b918-4138-a9e4-f6a5b2541c88",
+      "timestamp": "2026-03-06T21:41:38.795660+00:00",
+      "resolved": false,
+      "severity": "High",
+      "category": "threat",
+      "title": "\ud83e\udd9d Predator Intrusion at North Island",
+      "location": "North Island (29.3222, -89.3263)",
+      "description": "Mammalian predator detected on or near active Neotropic Cormorant nesting area. Nest loss risk is high.",
+      "action": "Deploy exclusion barriers; contact LDWF predator management program",
+      "species": "Neotropic Cormorant",
+      "detectionId": "6eced6138628"
+    }
+  ]
 }

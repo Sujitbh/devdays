@@ -83,10 +83,16 @@ async def detect_wildlife(
     )
 
     # ── Build response ───────────────────────────────────────────────────
+    health = summary.colony_health_score
+    msg = (
+        f"Louisiana coastal analysis: {len(detections)} detection(s) in {len(clusters)} cluster(s). "
+        f"Colony Health: {health['score']}/100 ({health['grade']}) | Priority: {summary.conservation_priority}."
+        if health else
+        f"Detected {len(detections)} object(s). Priority: {summary.conservation_priority}."
+    )
     return DetectionResponse(
         success=True,
-        message=f"Detected {len(detections)} object(s) in {len(clusters)} cluster(s). "
-                f"Priority: {summary.conservation_priority}.",
+        message=msg,
         original_image=original_url,
         annotated_image=annotated_url,
         detections=detections,
@@ -95,4 +101,5 @@ async def detect_wildlife(
         debug_info=DebugInfo(**debug_info),
         spatial_clusters=clusters,
         heatmap_image=heatmap_url,
+        colony_health_score=health,
     )

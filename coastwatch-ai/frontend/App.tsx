@@ -9,6 +9,7 @@ import Archive from './pages/Archive';
 import HabitatMap from './pages/HabitatMap';
 import Alerts from './pages/Alerts';
 import Settings from './pages/Settings';
+import ModelTransparency from './pages/ModelTransparency';
 import { useStore } from './store/useStore';
 
 const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
@@ -26,7 +27,7 @@ const App: React.FC = () => {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/login" element={user && token ? <Navigate to="/dashboard" replace /> : <Login />} />
-        
+
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
@@ -34,6 +35,7 @@ const App: React.FC = () => {
           <Route path="archive" element={<Archive />} />
           <Route path="map" element={<HabitatMap />} />
           <Route path="alerts" element={<Alerts />} />
+          <Route path="transparency" element={<ModelTransparency />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>

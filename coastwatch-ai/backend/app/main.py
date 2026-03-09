@@ -18,6 +18,7 @@ from app.routes.detect import router as detect_router
 from app.routes.auth import router as auth_router
 from app.routes.data import router as data_router
 from app.routes.alerts import router as alerts_router
+from app.routes.colony import router as colony_router
 from app.services.detector import detector_service
 from app.services.local_auth import init_db
 
@@ -74,6 +75,7 @@ app.include_router(detect_router)
 app.include_router(auth_router)
 app.include_router(data_router)
 app.include_router(alerts_router)
+app.include_router(colony_router)
 
 
 # ---- Health Check Endpoint ---------------------------------------------------

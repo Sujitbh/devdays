@@ -43,6 +43,7 @@ CLUSTER_RADIUS_PX    = 200      # max px between neighbours
 CLUSTER_MIN_MEMBERS  = 2
 
 # ── Wildlife & habitat class filter ──────────────────────────────────────────
+# Generic COCO classes (fallback for yolov8n.pt)
 ALLOWED_CLASSES = {
     "bird", "cat", "dog", "horse", "sheep", "cow",
     "elephant", "bear", "zebra", "giraffe",
@@ -51,20 +52,40 @@ CONTEXT_CLASSES = {
     "boat", "person", "car", "truck", "bus", "airplane",
     "ship", "surfboard", "kite",
 }
+# Louisiana-specific custom classes (PelicanEye fine-tuned model)
+LOUISIANA_SPECIES_CLASSES = {
+    "brown_pelican", "great_egret", "snowy_egret", "roseate_spoonbill",
+    "tricolored_heron", "great_blue_heron", "white_ibis", "glossy_ibis",
+    "royal_tern", "laughing_gull", "black_skimmer", "neotropic_cormorant",
+    "magnificent_frigatebird", "anhinga", "little_blue_heron",
+}
+LIFE_STAGE_CLASSES = {
+    "nest_active", "nest_inactive", "egg_clutch", "chick", "fledgling",
+}
+LOUISIANA_THREAT_CLASSES = {
+    "oil_sheen", "oil_slick", "flood_inundation", "habitat_erosion",
+    "predator_mammal", "human_disturbance", "nest_trampling", "invasive_vegetation",
+}
 ALLOWED_KEYWORDS = {
     "bird", "nest", "pelican", "heron", "egret", "ibis", "tern",
+    "spoonbill", "cormorant", "skimmer", "frigatebird", "anhinga",
+    "gull", "chick", "fledgling", "egg", "clutch",
     "deer", "alligator", "turtle", "dolphin", "manatee", "fish",
     "coyote", "raccoon", "nutria", "otter", "snake", "frog",
     "wildlife", "animal", "mammal", "reptile",
+    "oil", "sheen", "slick", "flood", "erosion", "predator", "invasive",
 }
 
 
 def _is_relevant(cls_name: str) -> bool:
-    """Check whether a YOLO class is wildlife/habitat-relevant."""
+    """Check whether a YOLO class is wildlife/habitat/threat-relevant."""
     low = cls_name.lower()
     return (
         low in ALLOWED_CLASSES
         or low in CONTEXT_CLASSES
+        or low in LOUISIANA_SPECIES_CLASSES
+        or low in LIFE_STAGE_CLASSES
+        or low in LOUISIANA_THREAT_CLASSES
         or any(kw in low for kw in ALLOWED_KEYWORDS)
     )
 
@@ -522,7 +543,7 @@ class DetectorService:
 
         # Stats overlay (top-left)
         stats_lines = [
-            f"PelicanEye | {len(detections)} detections | {len(clusters)} clusters",
+            f"PelicanEye Louisiana | {len(detections)} detections | {len(clusters)} clusters",
         ]
         tiny_count = sum(1 for d in detections if (d.x2 - d.x1) * (d.y2 - d.y1) < TINY_OBJ_PIXELS)
         if tiny_count:

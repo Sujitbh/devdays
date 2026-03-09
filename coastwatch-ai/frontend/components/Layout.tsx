@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { 
-  LayoutDashboard, Database, Image as ImageIcon, Map as MapIcon, 
-  ShieldAlert, Settings, LogOut, Search, Bell
+import {
+  LayoutDashboard, Database, Image as ImageIcon, Map as MapIcon,
+  ShieldAlert, Settings, LogOut, Search, Bell, BookOpen
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
@@ -18,6 +18,7 @@ const Layout: React.FC = () => {
     { path: '/analyzer', label: 'AI Analyzer', icon: ImageIcon },
     { path: '/map', label: 'Habitat Map', icon: MapIcon },
     { path: '/alerts', label: 'Priority Alerts', icon: ShieldAlert },
+    { path: '/transparency', label: 'AI Transparency', icon: BookOpen },
   ];
 
   const handleLogout = () => {
@@ -49,11 +50,10 @@ const Layout: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${
-                  isActive 
-                    ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 shadow-sm' 
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${isActive
+                    ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 shadow-sm'
                     : 'hover:bg-slate-800 hover:text-white'
-                }`}
+                  }`}
               >
                 <Icon size={20} className={`${isActive ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
                 <span className="font-medium text-sm">{item.label}</span>
@@ -65,14 +65,13 @@ const Layout: React.FC = () => {
         <div className="p-4 border-t border-slate-800 space-y-1">
           <Link
             to="/settings"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:text-white group hover:bg-slate-800 ${
-              location.pathname === '/settings' ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : ''
-            }`}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:text-white group hover:bg-slate-800 ${location.pathname === '/settings' ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : ''
+              }`}
           >
             <Settings size={20} className="group-hover:rotate-45 transition-transform" />
             <span className="font-medium text-sm">Settings</span>
           </Link>
-          <button 
+          <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 transition-all text-slate-400 hover:text-red-400"
           >
@@ -88,13 +87,13 @@ const Layout: React.FC = () => {
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-20">
           <div className="relative w-96 group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search surveys, species, or locations..." 
+            <input
+              type="text"
+              placeholder="Search surveys, species, or locations..."
               className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
             />
           </div>
-          
+
           <div className="flex items-center gap-6">
             <button className="relative text-slate-400 hover:text-slate-600 transition-colors">
               <Bell size={22} />

@@ -200,6 +200,38 @@ export const api = {
     const { data } = await http.get('/health');
     return data;
   },
+
+  // ── Colony Health & Transparency ─────────────────────────────────────
+
+  /** Get colony health scores for all monitored sites */
+  async getColonyHealth(): Promise<any[]> {
+    const { data } = await http.get('/api/colony/health');
+    return data;
+  },
+
+  /** Get population trends over time per species */
+  async getPopulationTrends(): Promise<any> {
+    const { data } = await http.get('/api/colony/population-trends');
+    return data;
+  },
+
+  /** Get all Louisiana colony monitoring sites */
+  async getColonySites(): Promise<any[]> {
+    const { data } = await http.get('/api/colony/sites');
+    return data;
+  },
+
+  /** Get species conservation status info */
+  async getSpeciesInfo(): Promise<any[]> {
+    const { data } = await http.get('/api/colony/species-info');
+    return data;
+  },
+
+  /** Get model transparency card */
+  async getModelCard(): Promise<any> {
+    const { data } = await http.get('/api/colony/model-card');
+    return data;
+  },
 };
 
 /** Helper: trigger browser download from a Blob */
