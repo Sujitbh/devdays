@@ -11,6 +11,10 @@ from fastapi import APIRouter, Query, HTTPException, Body
 from pydantic import BaseModel
 
 from app.services.alert_store import alert_store
+from app.services.recommendation_engine import (
+    match_recommendations_for_alert,
+    get_recommendation_catalog,
+)
 
 router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 
@@ -87,6 +91,7 @@ async def get_alert_stats():
     alerts = alert_store.get_all()
     
     severity_counts = {
+        'Critical': len([a for a in alerts if a.get('severity') == 'Critical' and not a.get('resolved')]),
         'High': len([a for a in alerts if a.get('severity') == 'High' and not a.get('resolved')]),
         'Medium': len([a for a in alerts if a.get('severity') == 'Medium' and not a.get('resolved')]),
         'Low': len([a for a in alerts if a.get('severity') == 'Low' and not a.get('resolved')]),
@@ -104,4 +109,25 @@ async def get_alert_stats():
         'by_severity': severity_counts,
         'by_category': category_counts,
         'newest_timestamp': alerts[0].get('timestamp') if alerts else None,
+    }
+
+
+@router.get("/{alert_id}/recommendations")
+async def get_alert_recommendations(alert_id: str):
+    """Get matched operational recommendations for one alert."""
+    alert = alert_store.get(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return {
+        "alert_id": alert_id,
+        "recommendations": match_recommendations_for_alert(alert),
+    }
+
+
+@router.get("/recommendations/catalog")
+async def get_recommendations_catalog():
+    """Get complete recommendation catalog for dashboard/reference view."""
+    return {
+        "count": len(get_recommendation_catalog()),
+        "recommendations": get_recommendation_catalog(),
     }

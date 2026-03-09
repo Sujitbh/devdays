@@ -2,13 +2,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Upload, Loader2, Sparkles, CheckCircle, AlertCircle, Bird, Trash2,
-  Download, SlidersHorizontal, SearchX, Image as ImageIcon, Clock,
-  ChevronRight, Layers, Eye, BarChart3, X, RefreshCw, FileImage, ArrowRight,
+  Download, SlidersHorizontal, SearchX, Image as ImageIcon,
+  Layers, Eye, BarChart3, X, RefreshCw, FileImage, ArrowRight,
   ShieldAlert, Target, Crosshair, Flame, Activity, Zap, Map,
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { api } from '../services/api';
 import { useStore } from '../store/useStore';
-import type { DetectionResponse, DetectionRecord } from '../types';
+import type { DetectionResponse } from '../types';
 
 // ── Batch queue item ────────────────────────────────────────────────────────
 interface QueueItem {
@@ -19,7 +20,7 @@ interface QueueItem {
   error?: string;
 }
 
-type ResultTab = 'summary' | 'actions' | 'spatial' | 'compare' | 'detections' | 'debug';
+type ResultTab = 'summary' | 'species' | 'actions' | 'spatial' | 'compare' | 'detections' | 'debug';
 
 const Analyzer: React.FC = () => {
   // ── Queue / batch state ───────────────────────────────────────────────────
@@ -32,10 +33,7 @@ const Analyzer: React.FC = () => {
   const [showCompareSlider, setShowCompareSlider] = useState(false);
   const [comparePosition, setComparePosition] = useState(50);
   const [showHeatmap, setShowHeatmap] = useState(false);
-
-  // ── History ───────────────────────────────────────────────────────────────
-  const [history, setHistory] = useState<DetectionRecord[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [speciesInfo, setSpeciesInfo] = useState<any[]>([]);
 
   const addDetection = useStore(state => state.addDetection);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,13 +44,11 @@ const Analyzer: React.FC = () => {
   const result = active?.result ?? null;
   const error = active?.error ?? null;
 
-  // ── Load history on mount ─────────────────────────────────────────────────
+  // ── Load species metadata on mount ────────────────────────────────────────
   useEffect(() => {
-    setHistoryLoading(true);
-    api.getDetections()
-      .then(setHistory)
-      .catch(() => setHistory([]))
-      .finally(() => setHistoryLoading(false));
+    api.getSpeciesInfo()
+      .then(setSpeciesInfo)
+      .catch(() => setSpeciesInfo([]));
   }, []);
 
   // ── File helpers ──────────────────────────────────────────────────────────
@@ -147,8 +143,6 @@ const Analyzer: React.FC = () => {
           annotatedImageUrl: data.annotated_image,
           boundingBoxes: data.detections,
         });
-        // Refresh history
-        api.getDetections().then(setHistory).catch(() => {});
       }
       setResultTab('summary');
     } catch (err: any) {
@@ -174,15 +168,321 @@ const Analyzer: React.FC = () => {
   };
 
   // ── Export ────────────────────────────────────────────────────────────────
-  const handleExportJSON = () => {
-    if (!result) return;
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `pelicaneye_${active?.file.name || 'analysis'}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExportPDF = () => {
+    if (!result || !result.summary) return;
+    
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let yPos = 20;
+    
+    // ── Header ──────────────────────────────────────────────────────────────
+    doc.setFillColor(20, 184, 166); // Teal
+    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PelicanEye', 15, 17);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Louisiana Coastal Wildlife AI Survey Report', 15, 25);
+    doc.setFontSize(8);
+    doc.text(`Generated: ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`, pageWidth - 15, 25, { align: 'right' });
+    
+    yPos = 45;
+    doc.setTextColor(0, 0, 0);
+    
+    // ── Executive Summary ───────────────────────────────────────────────────
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59); // Slate-800
+    doc.text('Executive Summary', 15, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105); // Slate-600
+    
+    const summary = result.summary;
+    const summaryLines = [
+      `Primary Species: ${summary.species}`,
+      `Total Count: ${summary.count} individuals`,
+      `Confidence Level: ${(summary.confidence * 100).toFixed(1)}%`,
+      `Habitat Type: ${summary.habitatType}`,
+      `Survey Location: ${summary.colony_site || 'Louisiana Coastal Region'}`,
+      `Analysis Status: ${summary.conservation_priority || 'Standard'} Priority`,
+    ];
+    
+    summaryLines.forEach(line => {
+      doc.text(line, 20, yPos);
+      yPos += 6;
+    });
+    
+    yPos += 5;
+    
+    // ── Conservation Status ─────────────────────────────────────────────────
+    const speciesData = speciesInfo.find(s => 
+      s.species.toLowerCase() === summary.species.toLowerCase()
+    );
+    
+    if (speciesData) {
+      doc.setFillColor(240, 253, 250); // Teal-50
+      doc.roundedRect(15, yPos, pageWidth - 30, 22, 3, 3, 'F');
+      doc.setDrawColor(153, 246, 228); // Teal-200
+      doc.roundedRect(15, yPos, pageWidth - 30, 22, 3, 3, 'S');
+      
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(13, 148, 136); // Teal-600
+      doc.text('Conservation Status', 20, yPos);
+      yPos += 7;
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Status: ${speciesData.status}  •  Monitoring: ${speciesData.monitoring_priority} Priority  •  Weight: ${speciesData.priority_weight}`, 20, yPos);
+      yPos += 12;
+    }
+    
+    // ── Detection Results ───────────────────────────────────────────────────
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('Detection Results', 15, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    
+    const detectionStats = [
+      { label: 'Total Detections', value: result.detections?.length || 0 },
+      { label: 'Clusters Identified', value: summary.clusters || 0 },
+      { label: 'Nesting Activity', value: summary.nestingDetected ? 'Active' : 'None' },
+      { label: 'Threats Detected', value: summary.threats?.length || 0 },
+    ];
+    
+    const colWidth = (pageWidth - 30) / 2;
+    let col = 0;
+    detectionStats.forEach((stat, idx) => {
+      const xPos = 20 + (col * colWidth);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${stat.label}:`, xPos, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text(String(stat.value), xPos + 35, yPos);
+      
+      if (idx % 2 === 1) {
+        yPos += 7;
+        col = 0;
+      } else {
+        col = 1;
+      }
+    });
+    
+    yPos += 10;
+    
+    // ── Colony Health Score ─────────────────────────────────────────────────
+    if (summary.colony_health_score) {
+      // Check if we need a new page
+      if (yPos > pageHeight - 60) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text('Colony Health Assessment', 15, yPos);
+      yPos += 8;
+      
+      const healthScore = summary.colony_health_score;
+      const scoreValue = healthScore.score || 0;
+      const scoreColor = scoreValue >= 70 ? [16, 185, 129] : scoreValue >= 40 ? [251, 191, 36] : [239, 68, 68];
+      
+      // Score box
+      doc.setFillColor(249, 250, 251); // Gray-50
+      doc.roundedRect(15, yPos, 50, 18, 2, 2, 'F');
+      doc.setDrawColor(229, 231, 235);
+      doc.roundedRect(15, yPos, 50, 18, 2, 2, 'S');
+      
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...scoreColor);
+      doc.text(scoreValue.toFixed(0), 40, yPos + 12, { align: 'center' });
+      
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text('Health Score', 40, yPos + 16, { align: 'center' });
+      
+      // Assessment text
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      const assessment = healthScore.assessment || 'Standard colony health';
+      const assessmentLines = doc.splitTextToSize(assessment, pageWidth - 90);
+      doc.text(assessmentLines, 70, yPos + 6);
+      
+      yPos += 25;
+      
+      // Component breakdown
+      if (healthScore.components) {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(71, 85, 105);
+        doc.text('Health Score Components:', 20, yPos);
+        yPos += 8;
+        
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        
+        const components = [
+          { key: 'population_density', label: 'Population Density', weight: '30%' },
+          { key: 'threat_impact', label: 'Threat Impact', weight: '30%' },
+          { key: 'reproductive_success', label: 'Reproductive Success', weight: '25%' },
+          { key: 'habitat_quality', label: 'Habitat Quality', weight: '10%' },
+          { key: 'colony_structure', label: 'Colony Structure', weight: '5%' },
+        ];
+        
+        components.forEach(comp => {
+          const value = healthScore.components[comp.key] || 0;
+          doc.setFont('helvetica', 'normal');
+          doc.text(`${comp.label} (${comp.weight}):`, 25, yPos);
+          doc.setFont('helvetica', 'bold');
+          doc.text(value.toFixed(1), 90, yPos);
+          
+          // Progress bar
+          const barWidth = 80;
+          const barHeight = 4;
+          const barX = 100;
+          const barY = yPos - 3;
+          
+          doc.setFillColor(229, 231, 235); // Gray-200
+          doc.roundedRect(barX, barY, barWidth, barHeight, 1, 1, 'F');
+          
+          const fillWidth = (value / 100) * barWidth;
+          const barColor = value >= 70 ? [16, 185, 129] : value >= 40 ? [251, 191, 36] : [239, 68, 68];
+          doc.setFillColor(...barColor);
+          doc.roundedRect(barX, barY, fillWidth, barHeight, 1, 1, 'F');
+          
+          yPos += 8;
+        });
+      }
+      
+      yPos += 5;
+    }
+    
+    // ── Life Stage Analysis ─────────────────────────────────────────────────
+    if (summary.life_stages && Object.keys(summary.life_stages).length > 0) {
+      // Check if we need a new page
+      if (yPos > pageHeight - 50) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text('Life Stage Analysis', 15, yPos);
+      yPos += 8;
+      
+      doc.setFillColor(236, 254, 255); // Cyan-50
+      doc.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
+      
+      yPos += 8;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      
+      const stages = [
+        { key: 'egg_clutch', label: 'Egg Clutches' },
+        { key: 'chick', label: 'Chicks' },
+        { key: 'fledgling', label: 'Fledglings' },
+        { key: 'nest_active', label: 'Active Nests' },
+      ];
+      
+      stages.forEach(stage => {
+        const count = summary.life_stages![stage.key] || 0;
+        doc.text(`${stage.label}:`, 20, yPos);
+        doc.setFont('helvetica', 'bold');
+        doc.text(String(count), 60, yPos);
+        doc.setFont('helvetica', 'normal');
+        yPos += 6;
+      });
+      
+      yPos += 5;
+      
+      // Breeding success metrics
+      const eggs = summary.life_stages.egg_clutch || 0;
+      const chicks = summary.life_stages.chick || 0;
+      const fledglings = summary.life_stages.fledgling || 0;
+      
+      if (eggs > 0 || chicks > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(13, 148, 136);
+        doc.text('Breeding Success Indicators:', 20, yPos);
+        yPos += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        
+        if (eggs > 0 && chicks > 0) {
+          const hatchRate = Math.round((chicks / eggs) * 100);
+          doc.text(`Hatch Success Rate: ${hatchRate}%`, 25, yPos);
+          yPos += 6;
+        }
+        
+        if (chicks > 0 && fledglings > 0) {
+          const fledgeRate = Math.round((fledglings / chicks) * 100);
+          doc.text(`Fledgling Success Rate: ${fledgeRate}%`, 25, yPos);
+          yPos += 6;
+        }
+      }
+      
+      yPos += 10;
+    }
+    
+    // ── Conservation Recommendations ────────────────────────────────────────
+    if (yPos > pageHeight - 50) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('Conservation Recommendations', 15, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    
+    const recommendations = summary.nextSteps || [
+      'Continue routine monitoring',
+      'Document any changes in colony behavior',
+      'Report significant population changes to Louisiana Department of Wildlife and Fisheries',
+    ];
+    
+    recommendations.forEach((rec: string) => {
+      const lines = doc.splitTextToSize(`• ${rec}`, pageWidth - 40);
+      doc.text(lines, 20, yPos);
+      yPos += lines.length * 5 + 2;
+    });
+    
+    // ── Footer ──────────────────────────────────────────────────────────────
+    const footerY = pageHeight - 15;
+    doc.setDrawColor(229, 231, 235);
+    doc.line(15, footerY - 5, pageWidth - 15, footerY - 5);
+    
+    doc.setFontSize(8);
+    doc.setTextColor(156, 163, 175);
+    doc.setFont('helvetica', 'italic');
+    doc.text('PelicanEye – AI-Powered Coastal Wildlife Conservation', 15, footerY);
+    doc.text(`Page 1 of ${doc.getNumberOfPages()}`, pageWidth - 15, footerY, { align: 'right' });
+    
+    // ── Save PDF ────────────────────────────────────────────────────────────
+    const fileName = `PelicanEye_${summary.species.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
   };
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -203,8 +503,8 @@ const Analyzer: React.FC = () => {
               <Trash2 size={14} /> Clear All
             </button>
           )}
-          <button onClick={handleExportJSON} disabled={!result} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50 transition-all disabled:opacity-40">
-            <Download size={16} /> Export JSON
+          <button onClick={handleExportPDF} disabled={!result} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50 transition-all disabled:opacity-40">
+            <Download size={16} /> Export PDF
           </button>
         </div>
       </div>
@@ -213,7 +513,7 @@ const Analyzer: React.FC = () => {
         {/* ═══════════════════════════════════════════════════════════════════
             LEFT COLUMN — Upload + Queue + Controls
            ═══════════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="lg:col-span-4 space-y-4">
           {/* ── Drop Zone ─────────────────────────────────────────────────── */}
           <div
             ref={dropRef}
@@ -382,7 +682,7 @@ const Analyzer: React.FC = () => {
         {/* ═══════════════════════════════════════════════════════════════════
             CENTER COLUMN — Results with Tabs
            ═══════════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
+        <div className="lg:col-span-8 flex flex-col gap-4">
           {analyzing ? (
             <div className="bg-teal-50 border border-teal-100 rounded-3xl p-10 text-center flex flex-col justify-center animate-pulse flex-1">
               <Bird size={56} className="mx-auto text-teal-500 mb-4" />
@@ -454,44 +754,44 @@ const Analyzer: React.FC = () => {
               /* ─── Positive Results ───────────────────────────────────────── */
               <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl flex flex-col">
                 {/* Header */}
-                <div className={`p-6 text-white ${
+                <div className={`p-8 text-white ${
                   result.summary.conservation_priority === 'Critical'
                     ? 'bg-gradient-to-br from-red-600 to-rose-700'
                     : result.summary.conservation_priority === 'Elevated'
                       ? 'bg-gradient-to-br from-amber-500 to-orange-600'
                       : 'bg-gradient-to-br from-teal-600 to-cyan-600'
                 }`}>
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-bold">Analysis Complete</h3>
-                      <p className="text-white/70 text-xs">
+                      <h3 className="text-2xl font-bold">Analysis Complete</h3>
+                      <p className="text-white/70 text-sm mt-1">
                         YOLOv8 Advanced Pipeline
                         {result.debug_info?.sliced_inference && ' · SAHI Slicing'}
                         {result.debug_info ? ` · ${result.debug_info.inference_ms.toFixed(0)}ms` : ''}
                       </p>
                     </div>
                     {result.summary.conservation_priority === 'Critical' ? (
-                      <ShieldAlert size={28} className="animate-pulse" />
+                      <ShieldAlert size={32} className="animate-pulse" />
                     ) : (
-                      <CheckCircle size={28} />
+                      <CheckCircle size={32} />
                     )}
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="bg-white/10 rounded-xl p-2.5 text-center backdrop-blur-md">
-                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Detections</p>
-                      <p className="text-xl font-black">{result.total_detections}</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-md">
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Detections</p>
+                      <p className="text-2xl font-black mt-1">{result.total_detections}</p>
                     </div>
-                    <div className="bg-white/10 rounded-xl p-2.5 text-center backdrop-blur-md">
-                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Confidence</p>
-                      <p className="text-xl font-black">{(result.summary.confidence * 100).toFixed(0)}%</p>
+                    <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-md">
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Confidence</p>
+                      <p className="text-2xl font-black mt-1">{(result.summary.confidence * 100).toFixed(0)}%</p>
                     </div>
-                    <div className="bg-white/10 rounded-xl p-2.5 text-center backdrop-blur-md">
-                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Clusters</p>
-                      <p className="text-xl font-black">{result.spatial_clusters?.length ?? 0}</p>
+                    <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-md">
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Clusters</p>
+                      <p className="text-2xl font-black mt-1">{result.spatial_clusters?.length ?? 0}</p>
                     </div>
-                    <div className="bg-white/10 rounded-xl p-2.5 text-center backdrop-blur-md">
-                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Priority</p>
-                      <p className="text-sm font-black leading-tight mt-0.5">{result.summary.conservation_priority}</p>
+                    <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-md">
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Priority</p>
+                      <p className="text-base font-black leading-tight mt-1">{result.summary.conservation_priority}</p>
                     </div>
                   </div>
                 </div>
@@ -500,6 +800,7 @@ const Analyzer: React.FC = () => {
                 <div className="flex border-b border-slate-100 bg-slate-50/50 overflow-x-auto">
                   {([
                     { key: 'summary', label: 'Summary', icon: BarChart3 },
+                    { key: 'species', label: 'Species', icon: Bird },
                     { key: 'actions', label: 'Actions', icon: ShieldAlert },
                     { key: 'spatial', label: 'Spatial', icon: Crosshair },
                     { key: 'compare', label: 'Compare', icon: Eye },
@@ -509,52 +810,52 @@ const Analyzer: React.FC = () => {
                     <button
                       key={tab.key}
                       onClick={() => setResultTab(tab.key)}
-                      className={`flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 transition-all ${
+                      className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
                         resultTab === tab.key
                           ? 'text-teal-600 border-b-2 border-teal-500 bg-white'
                           : 'text-slate-400 hover:text-slate-600'
                       }`}
                     >
-                      <tab.icon size={11} /> {tab.label}
+                      <tab.icon size={14} /> {tab.label}
                     </button>
                   ))}
                 </div>
 
                 {/* Tab Content */}
-                <div className="p-5 space-y-4 overflow-y-auto custom-scrollbar flex-1" style={{ maxHeight: '420px' }}>
+                <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1" style={{ maxHeight: '520px' }}>
                   {resultTab === 'summary' && (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <p className="text-[9px] text-slate-400 font-bold uppercase mb-0.5">Primary Species</p>
-                          <p className="text-sm font-bold text-slate-800">{result.summary.species}</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Primary Species</p>
+                          <p className="text-base font-bold text-slate-800">{result.summary.species}</p>
                         </div>
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <p className="text-[9px] text-slate-400 font-bold uppercase mb-0.5">Habitat</p>
-                          <p className="text-sm font-bold text-slate-800">{result.summary.habitatType}</p>
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Habitat</p>
+                          <p className="text-base font-bold text-slate-800">{result.summary.habitatType}</p>
                         </div>
                       </div>
 
                       {/* Conservation Priority Badge */}
-                      <div className={`p-3 rounded-xl border flex items-center gap-3 ${
+                      <div className={`p-4 rounded-xl border flex items-center gap-4 ${
                         result.summary.conservation_priority === 'Critical'
                           ? 'bg-red-50 border-red-200'
                           : result.summary.conservation_priority === 'Elevated'
                             ? 'bg-amber-50 border-amber-200'
                             : 'bg-emerald-50 border-emerald-200'
                       }`}>
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                           result.summary.conservation_priority === 'Critical'
                             ? 'bg-red-100 text-red-600'
                             : result.summary.conservation_priority === 'Elevated'
                               ? 'bg-amber-100 text-amber-600'
                               : 'bg-emerald-100 text-emerald-600'
                         }`}>
-                          <ShieldAlert size={20} />
+                          <ShieldAlert size={24} />
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold uppercase text-slate-400">Conservation Priority</p>
-                          <p className={`text-sm font-black ${
+                          <p className="text-[10px] font-bold uppercase text-slate-400">Conservation Priority</p>
+                          <p className={`text-base font-black ${
                             result.summary.conservation_priority === 'Critical'
                               ? 'text-red-700'
                               : result.summary.conservation_priority === 'Elevated'
@@ -585,6 +886,134 @@ const Analyzer: React.FC = () => {
                         </p>
                       </div>
 
+                      {/* Colony Health Score - Enhanced */}
+                      {result.colony_health_score && (
+                        <div className="pt-3 border-t border-slate-100 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Colony Health Score</p>
+                            <span className="text-[8px] text-slate-400 font-mono">Weighted Ecological Index</span>
+                          </div>
+                          
+                          {/* Main Score Badge */}
+                          <div className={`p-4 rounded-2xl border-2 ${
+                            result.colony_health_score.score >= 75
+                              ? 'bg-emerald-50 border-emerald-200'
+                              : result.colony_health_score.score >= 50
+                                ? 'bg-yellow-50 border-yellow-200'
+                                : result.colony_health_score.score >= 25
+                                  ? 'bg-red-50 border-red-200'
+                                  : 'bg-red-100 border-red-300'
+                          }`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <span className="text-4xl">{result.colony_health_score.emoji}</span>
+                                <div>
+                                  <p className={`text-3xl font-black ${
+                                    result.colony_health_score.score >= 75 ? 'text-emerald-700' :
+                                    result.colony_health_score.score >= 50 ? 'text-yellow-700' :
+                                    result.colony_health_score.score >= 25 ? 'text-red-600' : 'text-red-700'
+                                  }`}>{result.colony_health_score.score}</p>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase">out of 100</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className={`text-lg font-black ${
+                                  result.colony_health_score.score >= 75 ? 'text-emerald-700' :
+                                  result.colony_health_score.score >= 50 ? 'text-yellow-700' :
+                                  result.colony_health_score.score >= 25 ? 'text-red-600' : 'text-red-700'
+                                }`}>{result.colony_health_score.grade}</p>
+                                <p className="text-[9px] text-slate-500 font-medium mt-0.5">Status</p>
+                              </div>
+                            </div>
+                            {result.colony_health_score.recommendation && (
+                              <p className="text-xs text-slate-700 font-medium mt-2 pt-2 border-t border-slate-200">
+                                💡 {result.colony_health_score.recommendation}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Component Breakdown */}
+                          {result.colony_health_score.components && (
+                            <div className="space-y-2">
+                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Score Breakdown</p>
+                              <div className="grid grid-cols-1 gap-2">
+                                {result.colony_health_score.components.population_density !== undefined && (
+                                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-[10px] font-bold text-slate-600">Population Density</span>
+                                      <span className="text-xs font-black text-teal-600">{result.colony_health_score.components.population_density.toFixed(1)}/30</span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                      <div className="h-full bg-teal-500 rounded-full" style={{ width: `${(result.colony_health_score.components.population_density / 30) * 100}%` }} />
+                                    </div>
+                                    {result.colony_health_score.components.density_value !== null && (
+                                      <p className="text-[9px] text-slate-400 mt-1">{result.colony_health_score.components.density_value.toFixed(3)} birds/1000px²</p>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {result.colony_health_score.components.threat_impact !== undefined && (
+                                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-[10px] font-bold text-slate-600">Threat Impact</span>
+                                      <span className="text-xs font-black text-orange-600">{result.colony_health_score.components.threat_impact.toFixed(1)}/30</span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                      <div className="h-full bg-orange-500 rounded-full" style={{ width: `${(result.colony_health_score.components.threat_impact / 30) * 100}%` }} />
+                                    </div>
+                                    {result.colony_health_score.components.threat_penalty_raw > 0 && (
+                                      <p className="text-[9px] text-red-500 mt-1">-{result.colony_health_score.components.threat_penalty_raw} penalty points from threats</p>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {result.colony_health_score.components.reproductive_success !== undefined && (
+                                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-[10px] font-bold text-slate-600">Reproductive Success</span>
+                                      <span className="text-xs font-black text-emerald-600">{result.colony_health_score.components.reproductive_success.toFixed(1)}/25</span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(result.colony_health_score.components.reproductive_success / 25) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {result.colony_health_score.components.habitat_quality !== undefined && (
+                                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-[10px] font-bold text-slate-600">Habitat Quality</span>
+                                      <span className="text-xs font-black text-blue-600">{result.colony_health_score.components.habitat_quality}/10</span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(result.colony_health_score.components.habitat_quality / 10) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {result.colony_health_score.components.colony_structure !== undefined && (
+                                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-[10px] font-bold text-slate-600">Colony Structure</span>
+                                      <span className="text-xs font-black text-purple-600">{result.colony_health_score.components.colony_structure}/5</span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                      <div className="h-full bg-purple-500 rounded-full" style={{ width: `${(result.colony_health_score.components.colony_structure / 5) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {result.colony_health_score.methodology && (
+                                <p className="text-[9px] text-slate-400 italic mt-2 pt-2 border-t border-slate-100">
+                                  {result.colony_health_score.methodology}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {result.summary.threats && result.summary.threats.length > 0 && (
                         <div className="pt-3 border-t border-slate-100">
                           <p className="text-[9px] text-red-400 font-bold uppercase mb-2">Threat Alerts</p>
@@ -598,6 +1027,214 @@ const Analyzer: React.FC = () => {
                         </div>
                       )}
                     </>
+                  )}
+
+                  {resultTab === 'species' && result.summary && (
+                    <div className="space-y-4">
+                      {/* Species Header Card */}
+                      <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-2xl border border-teal-100">
+                        <div className="flex items-start gap-3">
+                          <div className="p-3 bg-white rounded-xl shadow-sm">
+                            <Bird size={24} className="text-teal-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-black text-slate-800">{result.summary.species}</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Primary species detected in survey</p>
+                            {(() => {
+                              const speciesData = speciesInfo.find(s => 
+                                s.species.toLowerCase() === result.summary.species.toLowerCase()
+                              );
+                              if (speciesData) {
+                                const statusColors: Record<string, string> = {
+                                  'Recovered': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                  'Stable': 'bg-blue-100 text-blue-700 border-blue-200',
+                                  'Watch': 'bg-amber-100 text-amber-700 border-amber-200',
+                                  'Declining': 'bg-orange-100 text-orange-700 border-orange-200',
+                                  'Vulnerable': 'bg-red-100 text-red-700 border-red-200',
+                                };
+                                const statusColor = statusColors[speciesData.status] || 'bg-slate-100 text-slate-700 border-slate-200';
+                                return (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${statusColor}`}>
+                                      {speciesData.status.toUpperCase()}
+                                    </span>
+                                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
+                                      speciesData.monitoring_priority === 'Critical' ? 'bg-red-50 text-red-600 border-red-200' :
+                                      speciesData.monitoring_priority === 'Elevated' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                      'bg-slate-50 text-slate-600 border-slate-200'
+                                    }`}>
+                                      {speciesData.monitoring_priority} Priority
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-black text-teal-600">{result.summary.count}</p>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase">Detected</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Louisiana Context */}
+                      {result.summary.species.toLowerCase().includes('pelican') && (
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                          <p className="text-[9px] text-blue-600 font-bold uppercase mb-1.5 flex items-center gap-1">
+                            <ShieldAlert size={10} /> Louisiana Conservation Context
+                          </p>
+                          <p className="text-xs text-blue-700 leading-relaxed">
+                            The <strong>Brown Pelican</strong> is Louisiana's state bird and a conservation success story. 
+                            Listed as endangered in 1970 due to DDT, it was removed from the Endangered Species List in 2009. 
+                            Louisiana hosts the largest breeding colonies in North America. Post-Deepwater Horizon monitoring remains critical.
+                          </p>
+                        </div>
+                      )}
+
+                      {result.summary.species.toLowerCase().includes('spoonbill') && (
+                        <div className="bg-pink-50 border border-pink-100 rounded-xl p-3">
+                          <p className="text-[9px] text-pink-600 font-bold uppercase mb-1.5 flex items-center gap-1">
+                            <ShieldAlert size={10} /> Louisiana Conservation Context
+                          </p>
+                          <p className="text-xs text-pink-700 leading-relaxed">
+                            The <strong>Roseate Spoonbill</strong> is a Louisiana coastal treasure. Populations are sensitive to 
+                            water quality and salinity changes. Coastal erosion and habitat loss threaten their shallow-water feeding grounds.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Life Stages Detection */}
+                      {result.summary.life_stages && Object.keys(result.summary.life_stages).length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Life Stage Analysis</p>
+                            <span className="text-[8px] text-slate-400 font-mono">Breeding Success Indicators</span>
+                          </div>
+                          
+                          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                            {/* Life Stage Timeline */}
+                            <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50">
+                              <div className="flex items-center justify-between text-center">
+                                {[
+                                  { key: 'egg_clutch', label: 'Eggs', emoji: '🥚', color: 'emerald' },
+                                  { key: 'chick', label: 'Chicks', emoji: '🐣', color: 'amber' },
+                                  { key: 'fledgling', label: 'Fledglings', emoji: '🐦', color: 'blue' },
+                                  { key: 'nest_active', label: 'Active Nests', emoji: '🪺', color: 'teal' },
+                                ].map((stage, idx) => {
+                                  const count = result.summary.life_stages?.[stage.key] || 0;
+                                  const isDetected = count > 0;
+                                  return (
+                                    <div key={stage.key} className="flex-1">
+                                      {idx > 0 && (
+                                        <div className="h-0.5 bg-slate-200 mx-auto mb-2" style={{ width: '80%' }} />
+                                      )}
+                                      <div className={`text-2xl mb-1 ${isDetected ? 'opacity-100' : 'opacity-20'}`}>
+                                        {stage.emoji}
+                                      </div>
+                                      <p className="text-[9px] font-bold text-slate-600 uppercase">{stage.label}</p>
+                                      <p className={`text-lg font-black mt-0.5 ${isDetected ? `text-${stage.color}-600` : 'text-slate-300'}`}>
+                                        {count}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Breeding Success Metrics */}
+                            <div className="p-4 space-y-2">
+                              {(() => {
+                                const eggs = result.summary.life_stages?.egg_clutch || 0;
+                                const chicks = result.summary.life_stages?.chick || 0;
+                                const fledglings = result.summary.life_stages?.fledgling || 0;
+                                const activeNests = result.summary.life_stages?.nest_active || 0;
+                                
+                                const hatchSuccess = eggs > 0 ? Math.round((chicks / eggs) * 100) : 0;
+                                const fledgeSuccess = chicks > 0 ? Math.round((fledglings / chicks) * 100) : 0;
+                                
+                                return (
+                                  <>
+                                    {eggs > 0 && chicks > 0 && (
+                                      <div className="flex items-center justify-between p-2 bg-emerald-50 rounded-lg">
+                                        <span className="text-[10px] font-bold text-emerald-700">Hatch Success Rate</span>
+                                        <span className="text-sm font-black text-emerald-600">{hatchSuccess}%</span>
+                                      </div>
+                                    )}
+                                    
+                                    {chicks > 0 && fledglings > 0 && (
+                                      <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+                                        <span className="text-[10px] font-bold text-blue-700">Fledgling Success Rate</span>
+                                        <span className="text-sm font-black text-blue-600">{fledgeSuccess}%</span>
+                                      </div>
+                                    )}
+                                    
+                                    {activeNests > 0 && (
+                                      <div className="flex items-center justify-between p-2 bg-teal-50 rounded-lg">
+                                        <span className="text-[10px] font-bold text-teal-700">Active Breeding Detected</span>
+                                        <span className="text-sm font-black text-teal-600">✓ Yes</span>
+                                      </div>
+                                    )}
+                                    
+                                    {result.summary.nestingDetected && (
+                                      <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 mt-2">
+                                        <p className="text-[9px] text-amber-700 font-bold">
+                                          🚨 <strong>Critical Breeding Window:</strong> Ground access prohibited. 
+                                          Maintain 300m buffer zone. Schedule follow-up survey in 14 days.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Colony Site Context */}
+                      {result.summary.colony_site && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Survey Location</p>
+                          <p className="text-sm font-bold text-slate-700">{result.summary.colony_site}</p>
+                          <p className="text-xs text-slate-500 mt-1">{result.summary.habitatType} habitat type</p>
+                        </div>
+                      )}
+
+                      {/* Detection Details */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
+                          <p className="text-2xl font-black text-slate-800">{result.summary.count}</p>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Total Count</p>
+                        </div>
+                        <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
+                          <p className="text-2xl font-black text-teal-600">{(result.summary.confidence * 100).toFixed(0)}%</p>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Confidence</p>
+                        </div>
+                      </div>
+
+                      {/* All Louisiana Species Info */}
+                      {speciesInfo.length > 0 && (
+                        <details className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                          <summary className="p-3 cursor-pointer font-bold text-xs text-slate-600 hover:bg-slate-50 transition-colors">
+                            View All Louisiana Coastal Species ({speciesInfo.length})
+                          </summary>
+                          <div className="p-3 border-t border-slate-100 space-y-2 max-h-60 overflow-y-auto">
+                            {speciesInfo.map((sp, i) => (
+                              <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="text-xs font-bold text-slate-700">{sp.species}</p>
+                                  <p className="text-[9px] text-slate-400">{sp.status} • {sp.monitoring_priority} Priority</p>
+                                </div>
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: `${sp.color}20`, color: sp.color }}>
+                                  {sp.priority_weight}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
                   )}
 
                   {resultTab === 'actions' && result.summary && (
@@ -821,64 +1458,6 @@ const Analyzer: React.FC = () => {
               <p className="text-xs text-slate-400 mt-1">Upload survey imagery to generate insights.</p>
             </div>
           )}
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            RIGHT COLUMN — History Sidebar
-           ═══════════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-3">
-          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden h-full flex flex-col" style={{ maxHeight: '720px' }}>
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
-                <Clock size={12} /> Analysis History
-              </h3>
-              <span className="text-[10px] font-bold text-slate-400">{history.length} records</span>
-            </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-              {historyLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 size={20} className="text-slate-300 animate-spin" />
-                </div>
-              ) : history.length === 0 ? (
-                <div className="text-center py-8 opacity-50">
-                  <ImageIcon size={24} className="mx-auto text-slate-300 mb-2" />
-                  <p className="text-[10px] text-slate-400 font-bold">No past analyses</p>
-                  <p className="text-[9px] text-slate-300 mt-0.5">Results will appear here</p>
-                </div>
-              ) : (
-                history.map((record) => (
-                  <div key={record.id} className="bg-slate-50 rounded-xl p-3 border border-slate-100 hover:border-teal-200 transition-all cursor-pointer group">
-                    <div className="flex gap-2.5">
-                      {record.annotatedImageUrl && (
-                        <img
-                          src={record.annotatedImageUrl}
-                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                          alt=""
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-700 truncate">{record.species}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[9px] text-teal-600 font-bold">{record.count} det.</span>
-                          <span className="text-[9px] text-slate-300">·</span>
-                          <span className="text-[9px] text-slate-400">{(record.confidence * 100).toFixed(0)}%</span>
-                        </div>
-                        <p className="text-[9px] text-slate-400 mt-0.5">
-                          {new Date(record.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      <ChevronRight size={12} className="text-slate-300 group-hover:text-teal-500 transition-colors self-center flex-shrink-0" />
-                    </div>
-                    {record.nestingDetected && (
-                      <div className="mt-1.5 flex gap-1">
-                        <span className="bg-emerald-50 text-emerald-600 text-[8px] font-bold px-1.5 py-0.5 rounded border border-emerald-100">Nesting</span>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

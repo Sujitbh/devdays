@@ -11,13 +11,22 @@ import {
   Calendar, MoreVertical, Trash2, Copy, AlertCircle,
   TrendingDown, Users, Map, Link2, Tag, Zap,
 } from 'lucide-react';
-import type { Alert, DetectionRecord } from '../types';
+import type { Alert, DetectionRecord, OperationalRecommendation } from '../types';
 
 type FilterSeverity = 'all' | 'High' | 'Medium' | 'Low';
 type FilterCategory = 'all' | 'wildlife' | 'habitat' | 'threat' | 'system';
 type ViewMode = 'list' | 'timeline';
 
+type TrendPoint = { label: string; count: number };
+type AlertTrend = {
+  points: TrendPoint[];
+  deltaPct: number;
+  direction: 'up' | 'down' | 'stable';
+  summary: string;
+};
+
 const SEVERITY_CONFIG = {
+  Critical: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', badge: 'bg-rose-100 text-rose-700', icon: 'text-rose-500', dot: 'bg-rose-500', glow: 'shadow-rose-100' },
   High:   { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    badge: 'bg-red-100 text-red-700',       icon: 'text-red-500',    dot: 'bg-red-500',    glow: 'shadow-red-100' },
   Medium: { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  badge: 'bg-amber-100 text-amber-700',   icon: 'text-amber-500',  dot: 'bg-amber-500',  glow: 'shadow-amber-100' },
   Low:    { bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700',   badge: 'bg-blue-100 text-blue-700',     icon: 'text-blue-500',   dot: 'bg-blue-500',   glow: 'shadow-blue-100' },
@@ -44,6 +53,10 @@ const Alerts: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [dateRange, setDateRange] = useState<{ from?: string; to?: string }>({});
   const [loading, setLoading] = useState(true);
+  const [recommendationMap, setRecommendationMap] = useState<Record<string, OperationalRecommendation[]>>({});
+  const [recommendationLoading, setRecommendationLoading] = useState<Record<string, boolean>>({});
+  const [trendMap, setTrendMap] = useState<Record<string, AlertTrend | null>>({});
+  const [expandedTrendId, setExpandedTrendId] = useState<string | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
@@ -186,6 +199,75 @@ const Alerts: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const loadOperationalRecommendations = async (alertId: string) => {
+    if (recommendationMap[alertId] || recommendationLoading[alertId]) return;
+    setRecommendationLoading(prev => ({ ...prev, [alertId]: true }));
+    try {
+      const recs = await api.getAlertRecommendations(alertId);
+      setRecommendationMap(prev => ({ ...prev, [alertId]: recs }));
+    } catch {
+      setRecommendationMap(prev => ({ ...prev, [alertId]: [] }));
+    } finally {
+      setRecommendationLoading(prev => ({ ...prev, [alertId]: false }));
+    }
+  };
+
+  const buildTrendForAlert = (alert: Alert): AlertTrend | null => {
+    const speciesKey = (alert.species || '').trim().toLowerCase();
+    if (!speciesKey) return null;
+
+    const speciesRecords = detections
+      .filter(d => d.species.toLowerCase() === speciesKey)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    if (speciesRecords.length < 2) return null;
+
+    const byDay = new Map<string, number>();
+    for (const rec of speciesRecords) {
+      const key = new Date(rec.timestamp).toISOString().slice(0, 10);
+      byDay.set(key, (byDay.get(key) || 0) + rec.count);
+    }
+
+    const points: TrendPoint[] = Array.from(byDay.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-7)
+      .map(([day, count]) => ({ label: day.slice(5), count }));
+
+    if (points.length < 2) return null;
+
+    const recentWindow = points.slice(-3);
+    const previousWindow = points.slice(Math.max(0, points.length - 6), Math.max(0, points.length - 3));
+    const avg = (arr: TrendPoint[]) => (arr.length ? arr.reduce((s, p) => s + p.count, 0) / arr.length : 0);
+    const recentAvg = avg(recentWindow);
+    const prevAvg = avg(previousWindow);
+
+    const deltaPct = prevAvg > 0 ? ((recentAvg - prevAvg) / prevAvg) * 100 : (recentAvg > 0 ? 100 : 0);
+    const direction: 'up' | 'down' | 'stable' =
+      deltaPct > 10 ? 'up' : deltaPct < -10 ? 'down' : 'stable';
+
+    const summary =
+      direction === 'up'
+        ? 'Rising trend in detections over recent surveys.'
+        : direction === 'down'
+          ? 'Declining trend detected. Consider follow-up field verification.'
+          : 'Trend appears stable across recent survey windows.';
+
+    return {
+      points,
+      deltaPct: Number(deltaPct.toFixed(1)),
+      direction,
+      summary,
+    };
+  };
+
+  const toggleTrendForAlert = (alert: Alert) => {
+    const nextId = expandedTrendId === alert.id ? null : alert.id;
+    setExpandedTrendId(nextId);
+    if (nextId && !(alert.id in trendMap)) {
+      setTrendMap(prev => ({ ...prev, [alert.id]: buildTrendForAlert(alert) }));
+    }
+  };
+
   const AlertCard = ({ alert }: { alert: Alert }) => {
     const sev = SEVERITY_CONFIG[alert.severity];
     const cat = CATEGORY_CONFIG[alert.category || 'system'];
@@ -196,11 +278,17 @@ const Alerts: React.FC = () => {
     return (
       <div
         key={alert.id}
-        onClick={() => setExpandedId(isExpanded ? null : alert.id)}
+        onClick={() => {
+          const nextExpanded = isExpanded ? null : alert.id;
+          setExpandedId(nextExpanded);
+          if (nextExpanded) {
+            loadOperationalRecommendations(alert.id);
+          }
+        }}
         className={`bg-white rounded-2xl border overflow-hidden transition-all cursor-pointer ${
           alert.resolved
             ? 'border-slate-200 opacity-60'
-            : alert.severity === 'High'
+            : alert.severity === 'High' || alert.severity === 'Critical'
               ? `border-red-200 shadow-lg ${sev.glow}`
               : 'border-slate-200 shadow-sm hover:shadow-md'
         } ${isSelected ? 'ring-2 ring-teal-500' : ''}`}
@@ -292,9 +380,102 @@ const Alerts: React.FC = () => {
                     <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-teal-50 hover:border-teal-200 transition-all">
                       <Users size={14} /> Assign Team
                     </button>
-                    <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-teal-50 hover:border-teal-200 transition-all">
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        toggleTrendForAlert(alert);
+                      }}
+                      className={`flex items-center gap-2 border rounded-lg px-3 py-2.5 text-xs font-bold transition-all ${
+                        expandedTrendId === alert.id
+                          ? 'bg-teal-50 text-teal-700 border-teal-200'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-teal-50 hover:border-teal-200'
+                      }`}
+                    >
                       <BarChart3 size={14} /> Trend
                     </button>
+                  </div>
+
+                  {expandedTrendId === alert.id && (
+                    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Trend Analysis (Last 7 Surveys)</p>
+                        {trendMap[alert.id] && (
+                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${
+                            trendMap[alert.id]!.direction === 'up'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : trendMap[alert.id]!.direction === 'down'
+                                ? 'bg-red-50 text-red-700'
+                                : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {trendMap[alert.id]!.deltaPct > 0 ? '+' : ''}{trendMap[alert.id]!.deltaPct}%
+                          </span>
+                        )}
+                      </div>
+
+                      {!trendMap[alert.id] ? (
+                        <p className="text-xs text-slate-500">Insufficient species history for trend modeling (need at least 2 prior surveys).</p>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-7 gap-1 items-end h-16">
+                            {(() => {
+                              const points = trendMap[alert.id]!.points;
+                              const maxVal = Math.max(...points.map(p => p.count), 1);
+                              return points.map((p, idx) => (
+                                <div key={`${p.label}-${idx}`} className="flex flex-col items-center gap-1">
+                                  <div
+                                    className="w-full bg-teal-500/80 rounded-t"
+                                    style={{ height: `${Math.max(8, (p.count / maxVal) * 48)}px` }}
+                                    title={`${p.label}: ${p.count}`}
+                                  />
+                                  <span className="text-[8px] text-slate-400 font-bold">{p.label}</span>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                          <p className="text-xs text-slate-600 flex items-center gap-1.5">
+                            {trendMap[alert.id]!.direction === 'up' ? (
+                              <TrendingUp size={14} className="text-emerald-600" />
+                            ) : trendMap[alert.id]!.direction === 'down' ? (
+                              <TrendingDown size={14} className="text-red-600" />
+                            ) : (
+                              <BarChart3 size={14} className="text-slate-500" />
+                            )}
+                            {trendMap[alert.id]!.summary}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">Operational Playbook</p>
+                      {recommendationLoading[alert.id] && (
+                        <span className="text-[9px] text-slate-400 font-bold">Loading...</span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {(recommendationMap[alert.id] || []).map((rec, idx) => (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+                          <p className="text-xs font-black text-slate-700 flex items-center gap-2">
+                            {rec.threat_detected}
+                            {rec.ai_driven && <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100">AI-driven</span>}
+                          </p>
+                          <p className="text-[10px] text-slate-500"><strong>Trigger:</strong> {rec.trigger_condition}</p>
+                          <p className="text-[10px] text-slate-700"><strong>Action:</strong> {rec.recommended_action}</p>
+                          <p className="text-[10px] text-slate-500"><strong>Reasoning:</strong> {rec.reasoning}</p>
+                          <div className="grid grid-cols-2 gap-2 text-[10px]">
+                            <p className="text-slate-500"><strong>Priority:</strong> {rec.priority_level}</p>
+                            <p className="text-slate-500"><strong>Time:</strong> {rec.estimated_response_time}</p>
+                            <p className="text-slate-500"><strong>Agency:</strong> {rec.responsible_agency}</p>
+                            <p className="text-slate-500"><strong>Impact:</strong> {rec.expected_impact}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {!recommendationLoading[alert.id] && (recommendationMap[alert.id] || []).length === 0 && (
+                        <p className="text-xs text-slate-500">No operational recommendations available for this alert.</p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex gap-2 pt-2 border-t border-slate-200">

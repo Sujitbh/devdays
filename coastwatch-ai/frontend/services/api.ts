@@ -6,6 +6,7 @@ import type {
   DashboardStats,
   AuthResponse,
   Alert,
+  OperationalRecommendation,
 } from '../types';
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -177,6 +178,22 @@ export const api = {
   }> {
     const { data } = await http.get('/api/alerts/stats/summary');
     return data;
+  },
+
+  /** Get matched operational recommendations for one alert */
+  async getAlertRecommendations(alertId: string): Promise<OperationalRecommendation[]> {
+    const { data } = await http.get<{ alert_id: string; recommendations: OperationalRecommendation[] }>(
+      `/api/alerts/${alertId}/recommendations`
+    );
+    return data.recommendations || [];
+  },
+
+  /** Get complete recommendation catalog */
+  async getRecommendationCatalog(): Promise<OperationalRecommendation[]> {
+    const { data } = await http.get<{ count: number; recommendations: OperationalRecommendation[] }>(
+      '/api/alerts/recommendations/catalog'
+    );
+    return data.recommendations || [];
   },
 
   // ── Auth ──────────────────────────────────────────────────────────────

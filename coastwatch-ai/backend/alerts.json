@@ -12,6 +12,38 @@
       "action": "Deploy exclusion barriers; contact LDWF predator management program",
       "species": "Neotropic Cormorant",
       "detectionId": "6eced6138628"
+    },
+    {
+      "id": "c8be3baa-0559-4681-a2a6-cb3f0457c3f1",
+      "timestamp": "2026-03-09T01:32:20.439167+00:00",
+      "resolved": true,
+      "severity": "High",
+      "category": "threat",
+      "title": "\ud83e\udd9d Predator Intrusion at North Island",
+      "location": "North Island (29.3842, -90.0132)",
+      "description": "Mammalian predator detected on or near active Roseate Spoonbill nesting area. Nest loss risk is high.",
+      "action": "Deploy exclusion barriers; contact LDWF predator management program",
+      "species": "Roseate Spoonbill",
+      "detectionId": "f30831b66ff7",
+      "team": "LDWF Field Unit",
+      "assignee": "Unassigned",
+      "assigned_at": "2026-03-09T03:28:33.240Z"
+    },
+    {
+      "id": "3ad47408-ce94-4e45-a262-01c6e6f7babb",
+      "timestamp": "2026-03-09T01:41:14.301922+00:00",
+      "resolved": true,
+      "severity": "High",
+      "category": "threat",
+      "title": "\ud83e\udd9d Predator Intrusion at North Island",
+      "location": "North Island (29.2386, -89.9539)",
+      "description": "Mammalian predator detected on or near active Laughing Gull nesting area. Nest loss risk is high.",
+      "action": "Deploy exclusion barriers; contact LDWF predator management program",
+      "species": "Laughing Gull",
+      "detectionId": "323aaddad441",
+      "team": "LDWF Field Unit",
+      "assignee": "Unassigned",
+      "assigned_at": "2026-03-09T03:36:48.620Z"
     }
   ]
 }

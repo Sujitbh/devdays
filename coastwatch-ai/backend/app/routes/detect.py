@@ -13,6 +13,7 @@ from app.services.detector import detector_service
 from app.services.detection_store import detection_store
 from app.utils.image import save_upload, validate_image
 from app.utils.dependencies import get_current_user_id
+from app.utils.gps import extract_gps_from_image
 
 logger = logging.getLogger("pelicaneye.detect")
 
@@ -58,6 +59,13 @@ async def detect_wildlife(
         saved_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail="Uploaded file is not a valid image.")
 
+    # ── Extract GPS coordinates from image EXIF ─────────────────────────
+    gps_coords = extract_gps_from_image(str(saved_path))
+    if gps_coords:
+        logger.info("📍 GPS detected: %.6f°N, %.6f°W", gps_coords[0], abs(gps_coords[1]))
+    else:
+        logger.info("📍 No GPS data in image - using habitat inference")
+
     # ── Run advanced detection pipeline ──────────────────────────────────
     try:
         detections, annotated_path, debug_info, clusters, heatmap_path = \
@@ -70,7 +78,13 @@ async def detect_wildlife(
                 len(detections), len(clusters), debug_info.get("inference_ms", 0))
 
     # ── Generate wildlife summary ────────────────────────────────────────
-    summary = detection_store.summarize_detections(detections, clusters)
+    summary = detection_store.summarize_detections(
+        detections, 
+        clusters,
+        image_width=debug_info.get("image_width", 0),
+        image_height=debug_info.get("image_height", 0),
+        gps_coords=gps_coords,
+    )
 
     # ── Persist to store ─────────────────────────────────────────────────
     original_url = f"/static/uploads/{saved_path.name}"

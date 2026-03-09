@@ -147,6 +147,18 @@ export interface Alert {
   resolved?: boolean;
 }
 
+export interface OperationalRecommendation {
+  threat_detected: string;
+  trigger_condition: string;
+  recommended_action: string;
+  reasoning: string;
+  priority_level: 'Low' | 'Medium' | 'High' | 'Critical';
+  estimated_response_time: 'Immediate' | '24 hrs' | '3 days' | '1 week';
+  responsible_agency: string;
+  expected_impact: string;
+  ai_driven: boolean;
+}
+
 export interface DashboardStats {
   totalImages: number;
   totalDetections: number;
