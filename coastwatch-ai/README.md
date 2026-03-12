@@ -165,6 +165,72 @@ curl -X POST http://localhost:8000/api/detect \
 
 ---
 
+## ☁️ Deployment (Railway + Vercel)
+
+Recommended setup:
+- Backend: Railway
+- Frontend: Vercel
+
+### 1. Deploy Backend on Railway
+
+1. Create a new Railway project from your GitHub repo.
+2. Set the service **Root Directory** to `coastwatch-ai/backend`.
+3. Railway will use `backend/railway.json` and `backend/Procfile`.
+4. Add environment variables:
+
+| Variable | Example |
+| --- | --- |
+| `HOST` | `0.0.0.0` |
+| `PORT` | Railway-provided (do not hardcode if already set) |
+| `FRONTEND_URL` | `https://your-frontend.vercel.app` |
+| `UPLOAD_DIR` | `uploads` |
+| `RESULTS_DIR` | `results` |
+| `YOLO_MODEL` | `yolov8n.pt` |
+| `CONFIDENCE_THRESHOLD` | `0.35` |
+| `SUPABASE_URL` | `https://...` |
+| `SUPABASE_KEY` | `...` |
+| `SUPABASE_JWT_SECRET` | `...` |
+| `SENDGRID_API_KEY` | `...` (optional, for real email sends) |
+
+5. After deploy, confirm backend is up:
+
+```bash
+curl https://your-backend-url.up.railway.app/health
+```
+
+### 2. Deploy Frontend on Vercel
+
+1. Import the same GitHub repo into Vercel.
+2. Set project root to `coastwatch-ai/frontend`.
+3. Framework preset: **Vite**.
+4. Set environment variable:
+
+```bash
+VITE_API_URL=https://your-backend-url.up.railway.app
+```
+
+5. Deploy.
+
+`frontend/vercel.json` already includes SPA rewrite rules so routes like `/alerts` and `/dashboard` work on refresh.
+
+### 3. Final CORS Check
+
+Update Railway backend env var:
+
+```bash
+FRONTEND_URL=https://your-frontend.vercel.app
+```
+
+Redeploy backend after this change.
+
+### Notes for Demo vs Production
+
+- The app currently stores some data/files locally (`alerts.json`, `detections.json`, `users.db`, uploads/results).
+- On Railway, filesystem is ephemeral; data may reset after redeploy/restart.
+- For production durability, migrate records to Supabase/Postgres and image assets to object storage.
+
+---
+
 ## 📝 License
 
 This project is for educational / prototype purposes.
