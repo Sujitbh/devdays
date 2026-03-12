@@ -159,6 +159,16 @@ export interface OperationalRecommendation {
   ai_driven: boolean;
 }
 
+export interface AlertNotifyResponse {
+  success: boolean;
+  sent_via: 'sendgrid' | 'mock';
+  recipient: string;
+  recipient_name: string;
+  subject: string;
+  timestamp: string;
+  mock: boolean;
+}
+
 export interface DashboardStats {
   totalImages: number;
   totalDetections: number;

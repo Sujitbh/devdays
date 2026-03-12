@@ -7,6 +7,7 @@ import type {
   AuthResponse,
   Alert,
   OperationalRecommendation,
+  AlertNotifyResponse,
 } from '../types';
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -177,6 +178,37 @@ export const api = {
     newest_timestamp?: string;
   }> {
     const { data } = await http.get('/api/alerts/stats/summary');
+    return data;
+  },
+
+  /** Get matched operational recommendations by posting alert context directly */
+  async matchRecommendations(alert: {
+    title: string;
+    description: string;
+    action: string;
+    category?: string;
+    severity?: string;
+    species?: string;
+  }): Promise<OperationalRecommendation[]> {
+    const { data } = await http.post<{ recommendations: OperationalRecommendation[] }>(
+      '/api/alerts/recommendations/match',
+      alert
+    );
+    return data.recommendations || [];
+  },
+
+  /** Send alert notification to LDWF */
+  async notifyLDWF(payload: {
+    alert_id: string;
+    title: string;
+    severity: string;
+    location: string;
+    description: string;
+    action: string;
+    species?: string;
+    custom_message?: string;
+  }): Promise<AlertNotifyResponse> {
+    const { data } = await http.post<AlertNotifyResponse>('/api/alerts/notify', payload);
     return data;
   },
 

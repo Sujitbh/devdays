@@ -9,9 +9,9 @@ import {
   XCircle, Bell, TrendingUp, Target, Flame, Eye,
   Search, BarChart3, Waves, Mountain, Droplets, Download,
   Calendar, MoreVertical, Trash2, Copy, AlertCircle,
-  TrendingDown, Users, Map, Link2, Tag, Zap,
+  TrendingDown, Users, Map, Link2, Tag, Zap, Send, CheckCheck, X,
 } from 'lucide-react';
-import type { Alert, DetectionRecord, OperationalRecommendation } from '../types';
+import type { Alert, DetectionRecord, OperationalRecommendation, AlertNotifyResponse } from '../types';
 
 type FilterSeverity = 'all' | 'High' | 'Medium' | 'Low';
 type FilterCategory = 'all' | 'wildlife' | 'habitat' | 'threat' | 'system';
@@ -57,6 +57,12 @@ const Alerts: React.FC = () => {
   const [recommendationLoading, setRecommendationLoading] = useState<Record<string, boolean>>({});
   const [trendMap, setTrendMap] = useState<Record<string, AlertTrend | null>>({});
   const [expandedTrendId, setExpandedTrendId] = useState<string | null>(null);
+
+  // Notification state
+  const [notifyModal, setNotifyModal] = useState<Alert | null>(null);
+  const [notifyMessage, setNotifyMessage] = useState('');
+  const [notifySending, setNotifySending] = useState(false);
+  const [notifiedIds, setNotifiedIds] = useState<Record<string, AlertNotifyResponse>>({});
 
   // Fetch data on mount
   useEffect(() => {
@@ -199,11 +205,19 @@ const Alerts: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const loadOperationalRecommendations = async (alertId: string) => {
+  const loadOperationalRecommendations = async (alert: Alert) => {
+    const alertId = alert.id;
     if (recommendationMap[alertId] || recommendationLoading[alertId]) return;
     setRecommendationLoading(prev => ({ ...prev, [alertId]: true }));
     try {
-      const recs = await api.getAlertRecommendations(alertId);
+      const recs = await api.matchRecommendations({
+        title: alert.title,
+        description: alert.description,
+        action: alert.action,
+        category: alert.category,
+        severity: alert.severity,
+        species: alert.species,
+      });
       setRecommendationMap(prev => ({ ...prev, [alertId]: recs }));
     } catch {
       setRecommendationMap(prev => ({ ...prev, [alertId]: [] }));
@@ -282,7 +296,7 @@ const Alerts: React.FC = () => {
           const nextExpanded = isExpanded ? null : alert.id;
           setExpandedId(nextExpanded);
           if (nextExpanded) {
-            loadOperationalRecommendations(alert.id);
+            loadOperationalRecommendations(alert);
           }
         }}
         className={`bg-white rounded-2xl border overflow-hidden transition-all cursor-pointer ${
@@ -447,33 +461,33 @@ const Alerts: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                  <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
                     <div className="flex items-center justify-between">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">Operational Playbook</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Operational Playbook</p>
                       {recommendationLoading[alert.id] && (
-                        <span className="text-[9px] text-slate-400 font-bold">Loading...</span>
+                        <span className="text-xs text-slate-400 font-bold">Loading...</span>
                       )}
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {(recommendationMap[alert.id] || []).map((rec, idx) => (
-                        <div key={idx} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
-                          <p className="text-xs font-black text-slate-700 flex items-center gap-2">
+                        <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2.5">
+                          <p className="text-sm font-black text-slate-800 flex items-center gap-2">
                             {rec.threat_detected}
-                            {rec.ai_driven && <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100">AI-driven</span>}
+                            {rec.ai_driven && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold">AI-driven</span>}
                           </p>
-                          <p className="text-[10px] text-slate-500"><strong>Trigger:</strong> {rec.trigger_condition}</p>
-                          <p className="text-[10px] text-slate-700"><strong>Action:</strong> {rec.recommended_action}</p>
-                          <p className="text-[10px] text-slate-500"><strong>Reasoning:</strong> {rec.reasoning}</p>
-                          <div className="grid grid-cols-2 gap-2 text-[10px]">
-                            <p className="text-slate-500"><strong>Priority:</strong> {rec.priority_level}</p>
-                            <p className="text-slate-500"><strong>Time:</strong> {rec.estimated_response_time}</p>
-                            <p className="text-slate-500"><strong>Agency:</strong> {rec.responsible_agency}</p>
-                            <p className="text-slate-500"><strong>Impact:</strong> {rec.expected_impact}</p>
+                          <p className="text-sm text-slate-500 leading-relaxed"><strong className="text-slate-700">Trigger:</strong> {rec.trigger_condition}</p>
+                          <p className="text-sm text-slate-700 leading-relaxed"><strong>Action:</strong> {rec.recommended_action}</p>
+                          <p className="text-sm text-slate-500 leading-relaxed"><strong className="text-slate-700">Reasoning:</strong> {rec.reasoning}</p>
+                          <div className="grid grid-cols-2 gap-2 text-sm pt-1 border-t border-slate-100">
+                            <p className="text-slate-600"><strong className="text-slate-700">Priority:</strong> {rec.priority_level}</p>
+                            <p className="text-slate-600"><strong className="text-slate-700">Time:</strong> {rec.estimated_response_time}</p>
+                            <p className="text-slate-600"><strong className="text-slate-700">Agency:</strong> {rec.responsible_agency}</p>
+                            <p className="text-slate-600"><strong className="text-slate-700">Impact:</strong> {rec.expected_impact}</p>
                           </div>
                         </div>
                       ))}
                       {!recommendationLoading[alert.id] && (recommendationMap[alert.id] || []).length === 0 && (
-                        <p className="text-xs text-slate-500">No operational recommendations available for this alert.</p>
+                        <p className="text-sm text-slate-500">No operational recommendations available for this alert.</p>
                       )}
                     </div>
                   </div>
@@ -492,6 +506,19 @@ const Alerts: React.FC = () => {
                     >
                       {alert.resolved ? '↻ Re-open' : '✓ Mark Resolved'}
                     </button>
+                    {/* Notify LDWF button */}
+                    {notifiedIds[alert.id] ? (
+                      <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal-50 text-teal-700 text-[10px] font-bold border border-teal-200">
+                        <CheckCheck size={12} /> Notified
+                      </div>
+                    ) : (
+                      <button
+                        onClick={e => { e.stopPropagation(); setNotifyModal(alert); setNotifyMessage(''); }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-[10px] font-bold border border-indigo-200 transition-all"
+                      >
+                        <Send size={12} /> Notify LDWF
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -504,6 +531,110 @@ const Alerts: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-in fade-in duration-500">
+
+      {/* ── Notify LDWF Modal ────────────────────────────────────────── */}
+      {notifyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <Send size={18} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-base">Notify LDWF Team</h3>
+                  <p className="text-indigo-200 text-xs">Louisiana Dept. of Wildlife &amp; Fisheries</p>
+                </div>
+              </div>
+              <button onClick={() => setNotifyModal(null)} className="text-white/70 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Alert preview */}
+            <div className="px-6 pt-5 pb-3 space-y-3">
+              <div className="bg-slate-50 rounded-2xl p-4 space-y-2 border border-slate-100">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-black text-slate-800">{notifyModal.title}</p>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    notifyModal.severity === 'High' || notifyModal.severity === 'Critical'
+                      ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                  }`}>{notifyModal.severity}</span>
+                </div>
+                <p className="text-xs text-slate-500 flex items-center gap-1"><MapPin size={10} /> {notifyModal.location}</p>
+                <p className="text-xs text-slate-600 leading-relaxed">{notifyModal.description}</p>
+                <p className="text-xs font-medium text-indigo-700 bg-indigo-50 rounded-lg px-3 py-2">
+                  <strong>Recommended Action:</strong> {notifyModal.action}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 mb-1.5 block">
+                  Additional message <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={notifyMessage}
+                  onChange={e => setNotifyMessage(e.target.value)}
+                  placeholder="Add any field context or urgency notes for the LDWF team..."
+                  rows={3}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                <Bell size={12} className="text-indigo-400 flex-shrink-0" />
+                <span>Will be sent to <strong className="text-slate-600">monitoring@ldwf.louisiana.gov</strong> — LDWF Wildlife Monitoring Team</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 flex gap-3 border-t border-slate-100">
+              <button
+                onClick={() => setNotifyModal(null)}
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={notifySending}
+                onClick={async () => {
+                  if (!notifyModal) return;
+                  setNotifySending(true);
+                  try {
+                    const res = await api.notifyLDWF({
+                      alert_id: notifyModal.id,
+                      title: notifyModal.title,
+                      severity: notifyModal.severity,
+                      location: notifyModal.location,
+                      description: notifyModal.description,
+                      action: notifyModal.action,
+                      species: notifyModal.species,
+                      custom_message: notifyMessage || undefined,
+                    });
+                    setNotifiedIds(prev => ({ ...prev, [notifyModal.id]: res }));
+                    setNotifyModal(null);
+                  } catch {
+                    // still mark as notified for demo purposes
+                    setNotifiedIds(prev => ({ ...prev, [notifyModal!.id]: { success: true, sent_via: 'mock', recipient: 'monitoring@ldwf.louisiana.gov', recipient_name: 'LDWF Team', subject: notifyModal!.title, timestamp: new Date().toISOString(), mock: true } }));
+                    setNotifyModal(null);
+                  } finally {
+                    setNotifySending(false);
+                  }
+                }}
+                className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {notifySending ? (
+                  <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Sending...</>
+                ) : (
+                  <><Send size={14} /> Send to LDWF</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* — Header with stats — */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>

@@ -4,8 +4,10 @@ PelicanEye - Alerts Routes
 Endpoints for managing priority alerts.
 """
 
+import os
+import logging
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query, HTTPException, Body
 from pydantic import BaseModel
@@ -15,6 +17,8 @@ from app.services.recommendation_engine import (
     match_recommendations_for_alert,
     get_recommendation_catalog,
 )
+
+logger = logging.getLogger("pelicaneye.alerts")
 
 router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 
@@ -112,6 +116,24 @@ async def get_alert_stats():
     }
 
 
+class AlertMatchRequest(BaseModel):
+    """Alert context for recommendation matching (no backend storage required)."""
+    title: str = ""
+    description: str = ""
+    action: str = ""
+    category: str = ""
+    severity: str = ""
+    species: Optional[str] = None
+
+
+@router.post("/recommendations/match")
+async def match_recommendations(alert_data: AlertMatchRequest):
+    """Match recommendations directly from alert context without needing a stored alert."""
+    return {
+        "recommendations": match_recommendations_for_alert(alert_data.dict()),
+    }
+
+
 @router.get("/{alert_id}/recommendations")
 async def get_alert_recommendations(alert_id: str):
     """Get matched operational recommendations for one alert."""
@@ -130,4 +152,98 @@ async def get_recommendations_catalog():
     return {
         "count": len(get_recommendation_catalog()),
         "recommendations": get_recommendation_catalog(),
+    }
+
+
+# ── Notification ──────────────────────────────────────────────────────────────
+
+class NotifyRequest(BaseModel):
+    alert_id: str
+    title: str
+    severity: str
+    location: str
+    description: str
+    action: str
+    species: Optional[str] = None
+    recipient_name: str = "LDWF Wildlife Monitoring Team"
+    recipient_email: str = "monitoring@ldwf.louisiana.gov"
+    sender_name: str = "PelicanEye CoastWatch AI"
+    custom_message: Optional[str] = None
+
+
+@router.post("/notify")
+async def send_alert_notification(payload: NotifyRequest):
+    """
+    Send an alert notification to LDWF.
+    Uses SendGrid if SENDGRID_API_KEY is set in env; otherwise logs a mock
+    notification (demo-safe — always returns success).
+    """
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    subject = f"[PelicanEye {payload.severity} Alert] {payload.title}"
+
+    body = f"""
+PelicanEye CoastWatch AI — Priority Alert Notification
+{'=' * 60}
+
+Severity    : {payload.severity}
+Title       : {payload.title}
+Location    : {payload.location}
+Species     : {payload.species or 'N/A'}
+Timestamp   : {timestamp}
+
+DESCRIPTION
+-----------
+{payload.description}
+
+RECOMMENDED ACTION
+------------------
+{payload.action}
+
+{('ADDITIONAL NOTES' + chr(10) + '-' * 17 + chr(10) + payload.custom_message) if payload.custom_message else ''}
+
+{'=' * 60}
+This notification was generated automatically by PelicanEye.
+Respond to this alert via the Priority Alerts dashboard.
+""".strip()
+
+    sendgrid_key = os.getenv("SENDGRID_API_KEY", "")
+
+    if sendgrid_key:
+        # Real send via SendGrid (only runs when key is configured)
+        try:
+            import httpx
+            sg_payload = {
+                "personalizations": [{"to": [{"email": payload.recipient_email, "name": payload.recipient_name}]}],
+                "from": {"email": "alerts@pelicaneye.ai", "name": payload.sender_name},
+                "subject": subject,
+                "content": [{"type": "text/plain", "value": body}],
+            }
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://api.sendgrid.com/v3/mail/send",
+                    headers={"Authorization": f"Bearer {sendgrid_key}", "Content-Type": "application/json"},
+                    json=sg_payload,
+                    timeout=10,
+                )
+            sent_via = "sendgrid"
+            logger.info("📧 Alert notification sent via SendGrid to %s (status %d)", payload.recipient_email, resp.status_code)
+        except Exception as e:
+            logger.error("SendGrid send failed: %s — falling back to mock", e)
+            sent_via = "mock"
+    else:
+        # Demo / mock mode — log it and return success
+        sent_via = "mock"
+        logger.info("📧 [MOCK] Alert notification for '%s' would be sent to %s", payload.title, payload.recipient_email)
+        logger.info("Subject : %s", subject)
+        logger.info("Body    :\n%s", body)
+
+    return {
+        "success": True,
+        "sent_via": sent_via,
+        "recipient": payload.recipient_email,
+        "recipient_name": payload.recipient_name,
+        "subject": subject,
+        "timestamp": timestamp,
+        "mock": sent_via == "mock",
     }

@@ -127,6 +127,10 @@ const Login: React.FC = () => {
             {isRegister ? 'Already have an account? Sign In' : 'Need an account? Register'}
           </button>
         </div>
+
+        <p className="text-center text-[11px] text-slate-300 pt-2 border-t border-slate-100">
+          © {new Date().getFullYear()} PelicanEye · CoastWatch AI. All rights reserved.
+        </p>
       </div>
     </div>
   );
