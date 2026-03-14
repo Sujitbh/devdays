@@ -1,5 +1,83 @@
 [
   {
+    "id": "111c1f14229e",
+    "user_id": "77d556d5-593e-4d8f-bb68-d0c50ba2ae62",
+    "species": "Little Blue Heron",
+    "count": 3,
+    "confidence": 0.277,
+    "habitatType": "Barrier Island",
+    "nestingDetected": false,
+    "notes": "2 avian subject(s) identified \u2014 inferred as Little Blue Heron based on colony size (2 individuals) and Louisiana coastal habitat patterns. [Detection via YOLOv8 generic 'bird' class; custom Louisiana species model would provide exact species ID.] Colony Health Score: \ud83d\udfe1 56/100 (Stressed). Weighted components: Population Density (20.0/30), Threat Impact (25.5/30), Reproductive Success (0.0/25), Habitat Quality (10/10), Colony Structure (0/5). Elevated monitoring frequency recommended \u2014 investigate stressors Little Blue Heron conservation status: Declining. High conservation value \u2014 prioritize monitoring resources.",
+    "threats": [
+      "Low avian density \u2014 possible population stress or disturbance"
+    ],
+    "lat": 29.3471,
+    "lng": -89.3417,
+    "timestamp": "2026-03-14T01:31:16.410442+00:00",
+    "imageUrl": "/static/uploads/f05e8f52d7404c1b988d5cba06ae7ee0.jpg",
+    "annotatedImageUrl": "/static/results/annotated_f05e8f52d7404c1b988d5cba06ae7ee0.jpg",
+    "boundingBoxes": [
+      {
+        "x1": 1613.330810546875,
+        "y1": 667.8682250976562,
+        "x2": 1668.406982421875,
+        "y2": 734.4242553710938,
+        "confidence": 0.40624168515205383,
+        "class_id": 21,
+        "class_name": "bear",
+        "area_px": 3665.7,
+        "area_pct": 0.0448
+      },
+      {
+        "x1": 668.7503051757812,
+        "y1": 52.870609283447266,
+        "x2": 721.2368774414062,
+        "y2": 116.30136108398438,
+        "confidence": 0.22505496442317963,
+        "class_id": 14,
+        "class_name": "bird",
+        "area_px": 3329.3,
+        "area_pct": 0.0407
+      },
+      {
+        "x1": 2317.2327270507812,
+        "y1": 1589.000244140625,
+        "x2": 2350.5707397460938,
+        "y2": 1652.7435302734375,
+        "confidence": 0.20118921995162964,
+        "class_id": 14,
+        "class_name": "bird",
+        "area_px": 2125.1,
+        "area_pct": 0.026
+      }
+    ],
+    "conservation_priority": "Standard",
+    "recommended_actions": [
+      "Continue routine monitoring \u2014 no immediate action required",
+      "Archive data for baseline population trend analysis"
+    ],
+    "spatial_clusters": [],
+    "colony_health_score": {
+      "score": 56,
+      "grade": "Stressed",
+      "color": "yellow",
+      "emoji": "\ud83d\udfe1",
+      "recommendation": "Elevated monitoring frequency recommended \u2014 investigate stressors",
+      "components": {
+        "population_density": 20.0,
+        "density_value": 0.0,
+        "threat_impact": 25.5,
+        "threat_penalty_raw": 10,
+        "reproductive_success": 0,
+        "habitat_quality": 10,
+        "colony_structure": 0
+      },
+      "methodology": "Weighted ecological index: Population Density (30%), Threat Impact (30%), Reproductive Success (25%), Habitat Quality (10%), Colony Structure (5%)"
+    },
+    "life_stages": {},
+    "colony_site": "Shell Keys NWR"
+  },
+  {
     "id": "5dd614330b0d",
     "user_id": "77d556d5-593e-4d8f-bb68-d0c50ba2ae62",
     "species": "Royal Tern",
