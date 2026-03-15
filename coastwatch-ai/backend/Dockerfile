@@ -6,6 +6,8 @@ WORKDIR /app
 # OpenCV (cv2) used by ultralytics needs these system libs; slim image doesn't include them
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb1 libgl1 libxcb-xfixes0 libxcb-shm0 \
+    libglib2.0-0 \
+    libsm6 libxext6 libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install CPU-only PyTorch first (smaller/faster than CUDA version)
