@@ -6,6 +6,7 @@ and includes API routers.
 """
 
 import logging
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -33,17 +34,19 @@ logging.basicConfig(
 )
 
 
-# ---- Lifespan: load model on startup ----------------------------------------
+# ---- Lifespan: init DB + load model in background ---------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load the YOLO model and initialize auth DB when the server starts."""
+    """Initialize auth DB and start YOLO model load in background so the server can accept connections immediately (fixes Railway healthcheck)."""
     if ENV == "production" and not JWT_SECRET:
         raise RuntimeError(
             "JWT_SECRET must be set in production. Set the JWT_SECRET environment variable."
         )
     init_db()
-    detector_service.load_model()
+    # Load model in a background thread so the server starts listening right away.
+    # Otherwise lifespan blocks for 2–5+ minutes (model download) and healthcheck fails.
+    threading.Thread(target=detector_service.load_model, daemon=True).start()
     yield
 
 
