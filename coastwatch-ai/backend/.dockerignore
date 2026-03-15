@@ -1,0 +1,27 @@
+# Dependencies and local data (not needed in image)
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.coverage
+htmlcov
+
+# Local uploads and results (ephemeral on Railway anyway)
+uploads/*
+results/*
+!uploads/.gitkeep
+!results/.gitkeep
+
+# Git and env
+.git
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.idea
+.vscode
+*.swp
+.DS_Store
