@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # App code
 COPY . .
 
-# Railway sets PORT at runtime
-EXPOSE 8000
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Railway sets PORT at runtime (often 8080). Must listen on this port for healthcheck to pass.
+EXPOSE 8080
+ENV PORT=8080
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
