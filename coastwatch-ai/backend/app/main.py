@@ -11,8 +11,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
-from app.config import FRONTEND_URL, HOST, PORT, UPLOAD_DIR, RESULTS_DIR
+from app.config import ENV, FRONTEND_URL, HOST, JWT_SECRET, PORT, UPLOAD_DIR, RESULTS_DIR
+from app.limiter import limiter
 from app.models.detection import HealthResponse
 from app.routes.detect import router as detect_router
 from app.routes.auth import router as auth_router
@@ -35,6 +38,10 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load the YOLO model and initialize auth DB when the server starts."""
+    if ENV == "production" and not JWT_SECRET:
+        raise RuntimeError(
+            "JWT_SECRET must be set in production. Set the JWT_SECRET environment variable."
+        )
     init_db()
     detector_service.load_model()
     yield
@@ -48,6 +55,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ---- CORS Middleware ---------------------------------------------------------
 
@@ -56,7 +65,9 @@ app.add_middleware(
     allow_origins=[
         FRONTEND_URL,
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "http://localhost:5174",
     ],
     allow_credentials=True,

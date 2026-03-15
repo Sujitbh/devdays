@@ -5,9 +5,11 @@ API endpoints for uploading images and running YOLOv8 detection.
 """
 
 import logging
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 
 from app.config import CONFIDENCE_THRESHOLD
+from app.limiter import limiter
 from app.models.detection import DebugInfo, DetectionResponse, SpatialCluster
 from app.services.detector import detector_service
 from app.services.detection_store import detection_store
@@ -23,7 +25,9 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp", "image/ti
 
 
 @router.post("/detect", response_model=DetectionResponse)
+@limiter.limit("10/minute")
 async def detect_wildlife(
+    request: Request,
     file: UploadFile = File(...),
     conf_threshold: float = Form(None),
     user_id: str = Depends(get_current_user_id),

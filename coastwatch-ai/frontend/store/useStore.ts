@@ -5,11 +5,12 @@ import { User, DetectionRecord, Alert } from '../types';
 interface AppState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   detections: DetectionRecord[];
   alerts: Alert[];
   isDemoMode: boolean;
-  
-  setUser: (user: User | null, token: string | null) => void;
+
+  setUser: (user: User | null, token: string | null, refreshToken?: string | null) => void;
   logout: () => void;
   addDetection: (detection: DetectionRecord) => void;
   setDetections: (detections: DetectionRecord[]) => void;
@@ -27,9 +28,13 @@ const getInitialUser = (): User | null => {
   }
 };
 
+const getInitialRefreshToken = (): string | null =>
+  typeof localStorage !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+
 export const useStore = create<AppState>((set) => ({
   user: getInitialUser(),
-  token: localStorage.getItem('token'),
+  token: typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null,
+  refreshToken: getInitialRefreshToken(),
   detections: [],
   alerts: [
     {
@@ -53,21 +58,30 @@ export const useStore = create<AppState>((set) => ({
   ],
   isDemoMode: true,
 
-  setUser: (user, token) => {
+  setUser: (user, token, refreshToken = null) => {
     if (user && token) {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('token', token);
+      if (refreshToken != null) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
     } else {
       localStorage.removeItem('user');
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
     }
-    set({ user, token });
+    set({
+      user,
+      token,
+      refreshToken: refreshToken ?? (user && token ? localStorage.getItem('refreshToken') : null),
+    });
   },
 
   logout: () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    set({ user: null, token: null });
+    localStorage.removeItem('refreshToken');
+    set({ user: null, token: null, refreshToken: null });
   },
 
   addDetection: (d) => set((state) => ({ 

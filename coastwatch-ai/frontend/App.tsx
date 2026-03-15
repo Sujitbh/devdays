@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -11,6 +10,7 @@ import Alerts from './pages/Alerts';
 import Settings from './pages/Settings';
 import ModelTransparency from './pages/ModelTransparency';
 import { useStore } from './store/useStore';
+import { setOnAuthFailure } from './services/api';
 
 const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
   const user = useStore(state => state.user);
@@ -22,6 +22,13 @@ const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
 const App: React.FC = () => {
   const user = useStore(state => state.user);
   const token = useStore(state => state.token);
+
+  useEffect(() => {
+    setOnAuthFailure(() => {
+      useStore.getState().logout();
+      window.location.href = '/login';
+    });
+  }, []);
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

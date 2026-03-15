@@ -1,5 +1,136 @@
 [
   {
+    "id": "b20e955f0326",
+    "user_id": "77d556d5-593e-4d8f-bb68-d0c50ba2ae62",
+    "species": "Tricolored Heron",
+    "count": 7,
+    "confidence": 0.37,
+    "habitatType": "Barrier Island",
+    "nestingDetected": false,
+    "notes": "5 avian subject(s) identified \u2014 inferred as Tricolored Heron based on colony size (5 individuals) and Louisiana coastal habitat patterns. [Detection via YOLOv8 generic 'bird' class; custom Louisiana species model would provide exact species ID.] Colony Health Score: \ud83d\udfe1 63/100 (Stressed). Weighted components: Population Density (20.0/30), Threat Impact (30.0/30), Reproductive Success (0.0/25), Habitat Quality (10/10), Colony Structure (3/5). Elevated monitoring frequency recommended \u2014 investigate stressors Tricolored Heron conservation status: Declining. High conservation value \u2014 prioritize monitoring resources. Spatial analysis identified 1 colony cluster(s). Cluster 1: 2 individuals, density=0.1988/kpx\u00b2, spread=57px. 1 tiny detection(s) (<32\u00d732px) \u2014 high-altitude or distant subjects. SAHI sliced inference enhanced recall for these.",
+    "threats": [],
+    "lat": 29.5623,
+    "lng": -89.9295,
+    "timestamp": "2026-03-15T05:57:08.458910+00:00",
+    "imageUrl": "/static/uploads/c347f655e117407a872fa7e555978400.jpg",
+    "annotatedImageUrl": "/static/results/annotated_c347f655e117407a872fa7e555978400.jpg",
+    "boundingBoxes": [
+      {
+        "x1": 1233.2511596679688,
+        "y1": 1613.480224609375,
+        "x2": 1255.4429321289062,
+        "y2": 1671.956298828125,
+        "confidence": 0.6650344729423523,
+        "class_id": 14,
+        "class_name": "bird",
+        "area_px": 1297.7,
+        "area_pct": 0.0159
+      },
+      {
+        "x1": 1335.5623168945312,
+        "y1": 1994.58349609375,
+        "x2": 1477.435791015625,
+        "y2": 2183.364990234375,
+        "confidence": 0.5576959848403931,
+        "class_id": 21,
+        "class_name": "bear",
+        "area_px": 26783.1,
+        "area_pct": 0.3272
+      },
+      {
+        "x1": 488.93603515625,
+        "y1": 1698.403076171875,
+        "x2": 524.3118896484375,
+        "y2": 1732.61083984375,
+        "confidence": 0.5234255790710449,
+        "class_id": 14,
+        "class_name": "bird",
+        "area_px": 1210.1,
+        "area_pct": 0.0148
+      },
+      {
+        "x1": 1263.5087280273438,
+        "y1": 1515.26416015625,
+        "x2": 1294.8158569335938,
+        "y2": 1554.7938232421875,
+        "confidence": 0.32691651582717896,
+        "class_id": 14,
+        "class_name": "bird",
+        "area_px": 1237.6,
+        "area_pct": 0.0151
+      },
+      {
+        "x1": 684.1054077148438,
+        "y1": 1401.2433471679688,
+        "x2": 717.4039916992188,
+        "y2": 1452.7536010742188,
+        "confidence": 0.1998058259487152,
+        "class_id": 14,
+        "class_name": "bird",
+        "area_px": 1715.2,
+        "area_pct": 0.021
+      },
+      {
+        "x1": 2695.3335571289062,
+        "y1": 500.78082275390625,
+        "x2": 2739.22607421875,
+        "y2": 548.1752319335938,
+        "confidence": 0.16456300020217896,
+        "class_id": 18,
+        "class_name": "sheep",
+        "area_px": 2080.3,
+        "area_pct": 0.0254
+      },
+      {
+        "x1": 391.2983703613281,
+        "y1": 2203.468017578125,
+        "x2": 412.7369689941406,
+        "y2": 2243.98486328125,
+        "confidence": 0.15168409049510956,
+        "class_id": 14,
+        "class_name": "bird",
+        "area_px": 868.6,
+        "area_pct": 0.0106
+      }
+    ],
+    "conservation_priority": "Standard",
+    "recommended_actions": [
+      "Continue routine monitoring \u2014 no immediate action required",
+      "Archive data for baseline population trend analysis"
+    ],
+    "spatial_clusters": [
+      {
+        "cluster_id": 0,
+        "centroid_x": 1261.8,
+        "centroid_y": 1588.9,
+        "member_count": 2,
+        "dominant_class": "bird",
+        "avg_confidence": 0.496,
+        "spread_px": 56.6,
+        "density": 0.1988
+      }
+    ],
+    "colony_health_score": {
+      "score": 63,
+      "grade": "Stressed",
+      "color": "yellow",
+      "emoji": "\ud83d\udfe1",
+      "recommendation": "Elevated monitoring frequency recommended \u2014 investigate stressors",
+      "components": {
+        "population_density": 20.0,
+        "density_value": 0.001,
+        "threat_impact": 30.0,
+        "threat_penalty_raw": 0,
+        "reproductive_success": 0,
+        "habitat_quality": 10,
+        "colony_structure": 3
+      },
+      "methodology": "Weighted ecological index: Population Density (30%), Threat Impact (30%), Reproductive Success (25%), Habitat Quality (10%), Colony Structure (5%)"
+    },
+    "life_stages": {},
+    "colony_site": "Cat Island"
+  },
+  {
     "id": "111c1f14229e",
     "user_id": "77d556d5-593e-4d8f-bb68-d0c50ba2ae62",
     "species": "Little Blue Heron",

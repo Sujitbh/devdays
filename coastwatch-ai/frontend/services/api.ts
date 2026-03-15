@@ -1,5 +1,4 @@
-
-import axios from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type {
   DetectionResponse,
   DetectionRecord,
@@ -9,6 +8,7 @@ import type {
   OperationalRecommendation,
   AlertNotifyResponse,
 } from '../types';
+import { useStore } from '../store/useStore';
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -16,6 +16,12 @@ const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const http = axios.create({
   baseURL: BACKEND_URL,
 });
+
+/** Called when session is invalid and refresh failed or was not attempted (e.g. redirect to login) */
+let onAuthFailure: (() => void) | null = null;
+export function setOnAuthFailure(callback: () => void) {
+  onAuthFailure = callback;
+}
 
 // Attach auth token to every request if available
 http.interceptors.request.use((config) => {
@@ -25,6 +31,49 @@ http.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// On 401: try refresh once, then clear session and redirect to login
+http.interceptors.response.use(
+  (response) => response,
+  async (err: AxiosError) => {
+    const originalConfig = err.config as InternalAxiosRequestConfig & { _retried?: boolean };
+    if (err.response?.status !== 401 || !originalConfig) {
+      return Promise.reject(err);
+    }
+    if (originalConfig._retried) {
+      if (onAuthFailure) onAuthFailure();
+      return Promise.reject(err);
+    }
+    const isRefreshEndpoint = originalConfig.url?.includes('/api/auth/refresh');
+    if (isRefreshEndpoint) {
+      if (onAuthFailure) onAuthFailure();
+      return Promise.reject(err);
+    }
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      if (onAuthFailure) onAuthFailure();
+      return Promise.reject(err);
+    }
+    originalConfig._retried = true;
+    try {
+      const { data } = await axios.post<AuthResponse>(`${BACKEND_URL}/api/auth/refresh`, {
+        refresh_token: refreshToken,
+      });
+      const user = useStore.getState().user;
+      const newUser = user
+        ? { ...user, id: data.user.id, name: data.user.full_name || user.name, email: data.user.email }
+        : { id: data.user.id, name: data.user.full_name, email: data.user.email, role: 'student' as const };
+      useStore.getState().setUser(newUser, data.access_token, data.refresh_token);
+      if (originalConfig.headers) {
+        originalConfig.headers.Authorization = `Bearer ${data.access_token}`;
+      }
+      return http(originalConfig);
+    } catch {
+      if (onAuthFailure) onAuthFailure();
+      return Promise.reject(err);
+    }
+  }
+);
 
 export const api = {
   // ── Detection (YOLO) ──────────────────────────────────────────────────
@@ -240,6 +289,14 @@ export const api = {
       email,
       password,
       full_name: fullName,
+    });
+    return data;
+  },
+
+  /** Exchange refresh token for new access and refresh tokens (used internally on 401). */
+  async refresh(refreshToken: string): Promise<AuthResponse> {
+    const { data } = await axios.post<AuthResponse>(`${BACKEND_URL}/api/auth/refresh`, {
+      refresh_token: refreshToken,
     });
     return data;
   },

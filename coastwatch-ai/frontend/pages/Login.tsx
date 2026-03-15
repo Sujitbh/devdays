@@ -52,7 +52,7 @@ const Login: React.FC = () => {
           email: res.user.email,
           role,
         };
-        setUser(user, res.access_token);
+        setUser(user, res.access_token, res.refresh_token);
         navigate('/dashboard');
       }
     } catch (err: any) {

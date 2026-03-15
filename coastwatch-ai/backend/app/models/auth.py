@@ -20,6 +20,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RefreshRequest(BaseModel):
+    """Body for the POST /api/auth/refresh endpoint."""
+    refresh_token: str
+
+
 class AuthResponse(BaseModel):
     """Successful auth response with tokens and user info."""
     success: bool

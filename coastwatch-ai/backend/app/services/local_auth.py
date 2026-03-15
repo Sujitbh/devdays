@@ -13,15 +13,15 @@ from pathlib import Path
 from jose import jwt
 from passlib.context import CryptContext
 
-from app.config import BASE_DIR
+from app.config import BASE_DIR, JWT_SECRET
 
 # ── Password hashing ────────────────────────────────────────────────────────
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ── JWT settings ─────────────────────────────────────────────────────────────
-JWT_SECRET = "pelicaneye-local-dev-secret-change-in-production"
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 15   # Short-lived; use refresh token to renew
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # ── SQLite database ─────────────────────────────────────────────────────────
 DB_PATH = BASE_DIR / "users.db"
@@ -74,13 +74,26 @@ def init_db() -> None:
 
 # ── Public helpers ───────────────────────────────────────────────────────────
 
-def _create_token(user_id: str, email: str) -> str:
-    """Create a signed JWT access token."""
+def _create_access_token(user_id: str, email: str) -> str:
+    """Create a short-lived JWT access token."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": user_id,
         "email": email,
         "exp": expire,
+        "type": "access",
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _create_refresh_token(user_id: str, email: str) -> str:
+    """Create a long-lived JWT refresh token."""
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": expire,
+        "type": "refresh",
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -113,10 +126,11 @@ def register_user(email: str, password: str, full_name: str) -> dict:
     conn.commit()
     conn.close()
 
-    token = _create_token(user_id, email)
+    access_token = _create_access_token(user_id, email)
+    refresh_token = _create_refresh_token(user_id, email)
     return {
-        "access_token": token,
-        "refresh_token": token,  # same token for local dev
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "user": {
             "id": user_id,
             "email": email,
@@ -140,10 +154,11 @@ def login_user(email: str, password: str) -> dict:
     if not pwd_ctx.verify(password, row["password"]):
         raise ValueError("Invalid email or password.")
 
-    token = _create_token(row["id"], row["email"])
+    access_token = _create_access_token(row["id"], row["email"])
+    refresh_token = _create_refresh_token(row["id"], row["email"])
     return {
-        "access_token": token,
-        "refresh_token": token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "user": {
             "id": row["id"],
             "email": row["email"],
@@ -153,11 +168,13 @@ def login_user(email: str, password: str) -> dict:
 
 
 def get_user_from_token(token: str) -> dict:
-    """Decode JWT and return the user record.  Raises ValueError if invalid."""
+    """Decode JWT (access token only) and return the user record.  Raises ValueError if invalid."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except Exception:
         raise ValueError("Invalid or expired token.")
+    if payload.get("type") not in (None, "access"):
+        raise ValueError("Invalid token type.")
 
     conn = _get_db()
     row = conn.execute("SELECT * FROM users WHERE id = ?", (payload["sub"],)).fetchone()
@@ -170,4 +187,38 @@ def get_user_from_token(token: str) -> dict:
         "id": row["id"],
         "email": row["email"],
         "full_name": row["full_name"],
+    }
+
+
+def refresh_tokens(refresh_token: str) -> dict:
+    """
+    Validate refresh token and return new access + refresh tokens.
+    Raises ValueError if refresh token is invalid or expired.
+    """
+    if not refresh_token:
+        raise ValueError("Refresh token is required.")
+    try:
+        payload = jwt.decode(refresh_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        raise ValueError("Invalid or expired refresh token.")
+    if payload.get("type") != "refresh":
+        raise ValueError("Invalid token type.")
+
+    user_id = payload["sub"]
+    email = payload.get("email", "")
+
+    conn = _get_db()
+    row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    if row is None:
+        raise ValueError("User not found.")
+
+    return {
+        "access_token": _create_access_token(row["id"], row["email"]),
+        "refresh_token": _create_refresh_token(row["id"], row["email"]),
+        "user": {
+            "id": row["id"],
+            "email": row["email"],
+            "full_name": row["full_name"],
+        },
     }

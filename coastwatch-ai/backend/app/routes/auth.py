@@ -6,11 +6,13 @@ Uses a local SQLite database with bcrypt hashing and JWT tokens.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
 
-from app.models.auth import RegisterRequest, LoginRequest, AuthResponse
-from app.services.local_auth import register_user, login_user, get_user_from_token
+from fastapi import APIRouter, Header, HTTPException, Request
+
+from app.limiter import limiter
+from app.models.auth import RegisterRequest, LoginRequest, RefreshRequest, AuthResponse
+from app.services.local_auth import register_user, login_user, get_user_from_token, refresh_tokens
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +20,8 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=AuthResponse)
-async def register(body: RegisterRequest):
+@limiter.limit("5/minute")
+async def register(request: Request, body: RegisterRequest):
     """
     Register a new user.
 
@@ -46,7 +49,8 @@ async def register(body: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest):
     """
     Authenticate with email + password.
 
@@ -66,6 +70,28 @@ async def login(body: LoginRequest):
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/refresh", response_model=AuthResponse)
+@limiter.limit("10/minute")
+async def refresh(request: Request, body: RefreshRequest):
+    """
+    Exchange a valid refresh token for new access and refresh tokens.
+    Use when the access token has expired (e.g. after 401).
+    """
+    try:
+        result = refresh_tokens(body.refresh_token)
+        return AuthResponse(
+            success=True,
+            message="Tokens refreshed.",
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"],
+            user=result["user"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Refresh failed.") from exc
 
 
 @router.post("/logout")
