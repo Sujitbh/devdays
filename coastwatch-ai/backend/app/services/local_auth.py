@@ -78,14 +78,16 @@ def init_db() -> None:
 
 def _sb_get_user_by_email(email: str) -> dict | None:
     sb = get_supabase()
-    res = sb.table("users").select("*").ilike("email", email).maybe_single().execute()
-    return res.data
+    res = sb.table("users").select("*").ilike("email", email).limit(1).execute()
+    rows = res.data or []
+    return rows[0] if rows else None
 
 
 def _sb_get_user_by_id(user_id: str) -> dict | None:
     sb = get_supabase()
-    res = sb.table("users").select("*").eq("id", user_id).maybe_single().execute()
-    return res.data
+    res = sb.table("users").select("*").eq("id", user_id).limit(1).execute()
+    rows = res.data or []
+    return rows[0] if rows else None
 
 
 def _sb_insert_user(user: dict) -> None:
