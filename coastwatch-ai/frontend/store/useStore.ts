@@ -36,27 +36,8 @@ export const useStore = create<AppState>((set) => ({
   token: typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null,
   refreshToken: getInitialRefreshToken(),
   detections: [],
-  alerts: [
-    {
-      id: '1',
-      severity: 'High',
-      title: 'Rapid Shoreline Retreat',
-      location: 'Grand Isle Basin',
-      description: 'Erosion rate exceeded 5m in last 3 months.',
-      timestamp: '2 hours ago',
-      action: 'Prioritize rock armor deployment.'
-    },
-    {
-      id: '2',
-      severity: 'Medium',
-      title: 'Invasive Species Sighting',
-      location: 'Atchafalaya Delta',
-      description: 'Nutria population increasing in primary nesting grounds.',
-      timestamp: '1 day ago',
-      action: 'Schedule trapping program.'
-    }
-  ],
-  isDemoMode: true,
+  alerts: [],
+  isDemoMode: false,
 
   setUser: (user, token, refreshToken = null) => {
     if (user && token) {

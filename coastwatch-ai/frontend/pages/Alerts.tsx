@@ -42,6 +42,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string 
 const Alerts: React.FC = () => {
   const navigate = useNavigate();
   const storeAlerts = useStore(state => state.alerts);
+  const isDemoMode = useStore(state => state.isDemoMode);
   const [backendAlerts, setBackendAlerts] = useState<Alert[]>([]);
   const [detections, setDetections] = useState<DetectionRecord[]>([]);
   const [severityFilter, setSeverityFilter] = useState<FilterSeverity>('all');
@@ -109,7 +110,11 @@ const Alerts: React.FC = () => {
 
   // Combine all alerts
   const allAlerts = useMemo(() => {
-    const combined = [...(backendAlerts || []), ...storeAlerts, ...dynamicAlerts];
+    const combined = [
+      ...(backendAlerts || []),
+      ...(isDemoMode ? storeAlerts : []),
+      ...dynamicAlerts,
+    ];
     // Dedupe by id
     const seen = new Set<string>();
     return combined.filter(a => {
@@ -118,7 +123,7 @@ const Alerts: React.FC = () => {
       seen.add(key);
       return true;
     });
-  }, [backendAlerts, storeAlerts, dynamicAlerts]);
+  }, [backendAlerts, storeAlerts, dynamicAlerts, isDemoMode]);
 
   // Apply filters + search + date range
   const filtered = useMemo(() => {
