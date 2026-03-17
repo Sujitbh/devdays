@@ -8,7 +8,7 @@ import {
 import { useStore } from '../store/useStore';
 
 const Layout: React.FC = () => {
-  const { user, logout } = useStore();
+  const { user, logout, isDemoMode, setDemoMode } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -85,7 +85,7 @@ const Layout: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-20">
-          <div className="relative w-96 group">
+          <div className="relative w-80 group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={18} />
             <input
               type="text"
@@ -95,6 +95,23 @@ const Layout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              {isDemoMode && (
+                <span className="hidden md:inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-teal-50 text-teal-700 border border-teal-200">
+                  Demo mode
+                </span>
+              )}
+              <button
+                onClick={() => setDemoMode(!isDemoMode)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
+                  isDemoMode
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-slate-900 text-slate-50 border-slate-900 hover:bg-slate-800'
+                }`}
+              >
+                {isDemoMode ? 'Exit demo mode' : 'Start demo tour'}
+              </button>
+            </div>
             <button className="relative text-slate-400 hover:text-slate-600 transition-colors">
               <Bell size={22} />
               <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>

@@ -14,6 +14,7 @@ import {
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { DashboardStats, DetectionRecord, ColonySiteHealth } from '../types';
+import { useStore } from '../store/useStore';
 
 const PIE_COLORS = ['#0d9488', '#0891b2', '#7c3aed', '#e11d48', '#f59e0b', '#10b981', '#6366f1', '#ec4899'];
 
@@ -39,6 +40,7 @@ const healthColor = (score: number | null) => {
 };
 
 const Dashboard: React.FC = () => {
+  const isDemoMode = useStore(state => state.isDemoMode);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentDetections, setRecentDetections] = useState<DetectionRecord[]>([]);
   const [colonyHealth, setColonyHealth] = useState<ColonySiteHealth[]>([]);
@@ -172,6 +174,68 @@ const Dashboard: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Impact / Story Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">Why PelicanEye matters</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                AI-powered early warning for Louisiana&apos;s coastal colonies.
+              </p>
+            </div>
+            {isDemoMode && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 text-[10px] font-bold uppercase tracking-wide border border-teal-100">
+                Demo narrative
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Critical colonies protected</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{criticalSites || 0}</p>
+              <p className="text-[11px] text-slate-400">Sites flagged for urgent on-the-ground checks.</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">High-risk detections</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{threatCounts.length}</p>
+              <p className="text-[11px] text-slate-400">Suspected predators, erosion, or oil signatures.</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Survey time saved</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">4×</p>
+              <p className="text-[11px] text-slate-400">Automated review vs. manual spotting in imagery.</p>
+            </div>
+          </div>
+          <p className="text-[12px] text-slate-500 leading-relaxed">
+            PelicanEye turns raw drone surveys into a prioritized conservation to-do list, so biologists can
+            focus field time on the colonies most at risk instead of paging through thousands of images.
+          </p>
+        </div>
+        {isDemoMode && (
+          <div className="bg-slate-900 text-slate-50 p-5 rounded-3xl shadow-lg shadow-slate-900/30 border border-slate-800">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-300 mb-2">3-minute judge tour</p>
+            <ol className="space-y-2 text-[12px]">
+              <li>
+                <span className="font-semibold text-slate-100">1. Analyzer</span> – upload or use a sample survey to see
+                detections, threats, and colony health scores.
+              </li>
+              <li>
+                <span className="font-semibold text-slate-100">2. Alerts &amp; Map</span> – watch high-risk sites appear on the
+                alert list and Louisiana habitat map.
+              </li>
+              <li>
+                <span className="font-semibold text-slate-100">3. Dashboard export</span> – generate a CSV/GeoJSON report ready
+                for biologists and coastal managers.
+              </li>
+            </ol>
+            <p className="mt-3 text-[11px] text-slate-400">
+              You can toggle this demo guidance from the header at any time.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* KPI Row */}
