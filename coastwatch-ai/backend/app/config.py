@@ -29,6 +29,7 @@ RESULTS_DIR: Path = BASE_DIR / os.getenv("RESULTS_DIR", "results")
 SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
 SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
+USE_SUPABASE: bool = os.getenv("USE_SUPABASE", "").lower() in ("1", "true", "yes", "on")
 
 # ---- YOLO Model ----
 YOLO_MODEL: str = os.getenv("YOLO_MODEL", "yolov8n.pt")
@@ -43,6 +44,13 @@ JWT_SECRET: str = _raw_jwt_secret if _raw_jwt_secret else (
 )
 MAX_UPLOAD_BYTES: int = int(os.getenv("MAX_UPLOAD_BYTES", str(20 * 1024 * 1024)))  # 20 MB default
 
-# Ensure directories exist at startup
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+# Ensure directories exist at startup (may be read-only on some hosts)
+try:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+except Exception as exc:
+    print(f"[PelicanEye] Warning: could not create UPLOAD_DIR={UPLOAD_DIR}: {exc}")
+
+try:
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception as exc:
+    print(f"[PelicanEye] Warning: could not create RESULTS_DIR={RESULTS_DIR}: {exc}")
