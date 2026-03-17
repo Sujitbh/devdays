@@ -13,7 +13,8 @@ from pathlib import Path
 from jose import jwt
 from passlib.context import CryptContext
 
-from app.config import BASE_DIR, JWT_SECRET
+from app.config import BASE_DIR, JWT_SECRET, SUPABASE_KEY, SUPABASE_URL, USE_SUPABASE
+from app.services.supabase_client import get_supabase
 
 # ── Password hashing ────────────────────────────────────────────────────────
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -25,6 +26,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # ── SQLite database ─────────────────────────────────────────────────────────
 DB_PATH = BASE_DIR / "users.db"
+_use_supabase = bool(USE_SUPABASE and SUPABASE_URL and SUPABASE_KEY)
 
 
 _db_initialized = False
@@ -55,6 +57,9 @@ def _get_db() -> sqlite3.Connection:
 
 def init_db() -> None:
     """Create the users table if it doesn't already exist."""
+    if _use_supabase:
+        print("[PelicanEye] Using Supabase for auth users.")
+        return
     conn = _get_db()
     conn.execute(
         """
@@ -70,6 +75,22 @@ def init_db() -> None:
     conn.commit()
     conn.close()
     print("[PelicanEye] Local auth DB ready:", DB_PATH)
+
+def _sb_get_user_by_email(email: str) -> dict | None:
+    sb = get_supabase()
+    res = sb.table("users").select("*").ilike("email", email).maybe_single().execute()
+    return res.data
+
+
+def _sb_get_user_by_id(user_id: str) -> dict | None:
+    sb = get_supabase()
+    res = sb.table("users").select("*").eq("id", user_id).maybe_single().execute()
+    return res.data
+
+
+def _sb_insert_user(user: dict) -> None:
+    sb = get_supabase()
+    sb.table("users").insert(user).execute()
 
 
 # ── Public helpers ───────────────────────────────────────────────────────────
@@ -108,6 +129,32 @@ def register_user(email: str, password: str, full_name: str) -> dict:
     if len(password) < 6:
         raise ValueError("Password must be at least 6 characters.")
 
+    if _use_supabase:
+        existing = _sb_get_user_by_email(email)
+        if existing:
+            raise ValueError("A user with this email already exists.")
+
+        user_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        hashed = pwd_ctx.hash(password)
+        _sb_insert_user(
+            {
+                "id": user_id,
+                "full_name": full_name,
+                "email": email,
+                "password_hash": hashed,
+                "created_at": now,
+            }
+        )
+
+        access_token = _create_access_token(user_id, email)
+        refresh_token = _create_refresh_token(user_id, email)
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": {"id": user_id, "email": email, "full_name": full_name},
+        }
+
     conn = _get_db()
     # Check for existing user
     existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
@@ -144,6 +191,20 @@ def login_user(email: str, password: str) -> dict:
     Authenticate an existing user.  Returns tokens + user info.
     Raises ValueError on bad credentials.
     """
+    if _use_supabase:
+        row = _sb_get_user_by_email(email)
+        if row is None:
+            raise ValueError("Invalid email or password.")
+        if not pwd_ctx.verify(password, row["password_hash"]):
+            raise ValueError("Invalid email or password.")
+        access_token = _create_access_token(row["id"], row["email"])
+        refresh_token = _create_refresh_token(row["id"], row["email"])
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": {"id": row["id"], "email": row["email"], "full_name": row["full_name"]},
+        }
+
     conn = _get_db()
     row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
     conn.close()
@@ -176,9 +237,12 @@ def get_user_from_token(token: str) -> dict:
     if payload.get("type") not in (None, "access"):
         raise ValueError("Invalid token type.")
 
-    conn = _get_db()
-    row = conn.execute("SELECT * FROM users WHERE id = ?", (payload["sub"],)).fetchone()
-    conn.close()
+    if _use_supabase:
+        row = _sb_get_user_by_id(payload["sub"])
+    else:
+        conn = _get_db()
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (payload["sub"],)).fetchone()
+        conn.close()
 
     if row is None:
         raise ValueError("User not found.")
@@ -207,9 +271,12 @@ def refresh_tokens(refresh_token: str) -> dict:
     user_id = payload["sub"]
     email = payload.get("email", "")
 
-    conn = _get_db()
-    row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
+    if _use_supabase:
+        row = _sb_get_user_by_id(user_id)
+    else:
+        conn = _get_db()
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        conn.close()
     if row is None:
         raise ValueError("User not found.")
 
