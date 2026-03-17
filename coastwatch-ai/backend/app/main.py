@@ -73,6 +73,9 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:5174",
     ],
+    # Allow Vercel preview URLs for this project (prevents CORS failures when the user lands on a preview domain).
+    # Example preview origin: https://devdays-8by4-<hash>-bhattaraisu-ulmedus-projects.vercel.app
+    allow_origin_regex=r"^https://devdays-8by4-.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
