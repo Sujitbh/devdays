@@ -68,7 +68,9 @@ const ModelTransparency: React.FC = () => {
         '⚠️ Threats': (modelCard.class_performance || []).filter((c: any) => ['oil_sheen', 'oil_slick', 'flood_inundation', 'habitat_erosion', 'predator_mammal'].includes(c.name)),
     };
 
-    const totalTraining = (modelCard.dataset_sources || []).reduce((s: number, d: any) => s + d.image_count, 0);
+    const totalTrainingFromSources = (modelCard.dataset_sources || []).reduce((s: number, d: any) => s + d.image_count, 0);
+    const totalTraining =
+        typeof modelCard.training_images === 'number' ? modelCard.training_images : totalTrainingFromSources;
 
     return (
         <div className="space-y-6 pb-8">
